@@ -9,13 +9,19 @@ import { docToSegments } from './noteContent.js';
 import env from '../config/env.js';
 import { createQueue } from './queue.js';
 import { NOTE_EMBED_DELAY_MS, hashText, scheduleEmbedding } from './embedder.js';
+import { invalidateUserVectors } from '../ai/vectorCache.js';
+
+export const MAX_CHUNKS_PER_RESOURCE = 3000;
 
 export const processingQueue = createQueue({ name: 'processing', concurrency: env.PROCESSING_CONCURRENCY });
 export const enqueue = (id) => processingQueue.enqueue(id);
 
 /** Replaces a resource's chunks. If the resource was deleted meanwhile, cleans up instead. */
 export async function writeChunks(resource, segments) {
-  const chunks = chunkSegments(segments).map((c) => ({ ...c, textHash: hashText(c.text) }));
+  const all = chunkSegments(segments);
+  // Bound the work (and embedding cost) a single enormous item can create.
+  const chunks = all.slice(0, MAX_CHUNKS_PER_RESOURCE).map((c) => ({ ...c, textHash: hashText(c.text) }));
+  const capped = all.length > chunks.length;
   // Keep vectors for passages whose text is unchanged, so edits don't re-embed the whole item.
   const previous = await Chunk.find({ resource: resource._id, embeddingModel: { $ne: null } }, { textHash: 1, embeddingModel: 1, embeddedAt: 1 })
     .select('+embedding')
@@ -37,10 +43,16 @@ export async function writeChunks(resource, segments) {
       { ordered: true }
     );
   }
+  invalidateUserVectors(resource.user);
   if (!(await Resource.exists({ _id: resource._id }))) {
     await Chunk.deleteMany({ resource: resource._id });
     return null;
   }
+  await Resource.updateOne(
+    { _id: resource._id },
+    { $set: { 'processing.note': capped ? `This item is very long; only the first ${MAX_CHUNKS_PER_RESOURCE.toLocaleString()} of ${all.length.toLocaleString()} passages were indexed.` : null } },
+    { timestamps: false }
+  );
   await scheduleEmbedding(resource._id, { delay: resource.type === 'note' ? NOTE_EMBED_DELAY_MS : 0 });
   return { chunkCount: chunks.length, charCount: chunks.reduce((n, c) => n + c.charCount, 0), excerpt: excerptOf(segments) };
 }

@@ -28,10 +28,10 @@ export const sensitiveLimiter = rateLimit({
   skip,
 });
 
-/** General API ceiling per IP. */
+/** General API ceiling per IP (configurable; sensitive routes have their own stricter limits). */
 export const apiLimiter = rateLimit({
   windowMs: 60 * 1000,
-  limit: 300,
+  limit: env.API_RATE_LIMIT_PER_MIN,
   standardHeaders: 'draft-7',
   legacyHeaders: false,
   handler,

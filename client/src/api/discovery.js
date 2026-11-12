@@ -1,14 +1,4 @@
-import { http } from './client.js';
-
-function qs(params) {
-  const s = new URLSearchParams();
-  for (const [k, v] of Object.entries(params)) {
-    if (v === undefined || v === null || v === '' || (Array.isArray(v) && !v.length)) continue;
-    s.set(k, Array.isArray(v) ? v.join(',') : String(v));
-  }
-  const str = s.toString();
-  return str ? `?${str}` : '';
-}
+import { http, qs } from './client.js';
 
 export const searchApi = {
   search: (params, opts) => http.get(`/search${qs(params)}`, opts),
@@ -16,6 +6,7 @@ export const searchApi = {
   recent: () => http.get('/search/recent'),
   deleteRecent: (id) => http.del(`/search/recent/${id}`),
   clearRecent: () => http.del('/search/recent'),
+  remember: (query, resultCount) => http.post('/search/recent', { query, resultCount })
 };
 
 export const graphApi = {

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Background, BackgroundVariant, Controls, MiniMap, ReactFlow, ReactFlowProvider, useEdgesState, useNodesState, useReactFlow } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { Check, Crosshair, ExternalLink, Folder, Hash, Lightbulb, Link2, Maximize, RotateCcw, Search, Sparkles, Trash2, Waypoints, X } from 'lucide-react';
+import { Check, Crosshair, ExternalLink, Folder, Hash, Lightbulb, Link2, Maximize, RotateCcw, Search, SlidersHorizontal, Sparkles, Trash2, Waypoints, X } from 'lucide-react';
 import PageHeader from '../../components/layout/PageHeader.jsx';
 import Button from '../../components/ui/Button.jsx';
 import Alert from '../../components/ui/Alert.jsx';
@@ -17,6 +17,7 @@ import { graphApi } from '../../api/discovery.js';
 import { useLibrary } from '../../context/LibraryContext.jsx';
 import { useTheme } from '../../context/ThemeContext.jsx';
 import { useToast } from '../../context/ToastContext.jsx';
+import { useAuth } from '../../context/AuthContext.jsx';
 
 const EDGE_STYLE = {
   manual: { stroke: 'var(--mm-accent)', strokeWidth: 2 },
@@ -33,6 +34,9 @@ function toFlow(graph) {
     id: e.id,
     source: e.source,
     target: e.target,
+    sourceHandle: 'c',
+    targetHandle: 'c',
+    type: 'straight',
     data: e,
     label: e.label || undefined,
     style: EDGE_STYLE[e.kind],
@@ -51,7 +55,7 @@ function Chip({ active, onClick, children, title }) {
   );
 }
 
-function NodePanel({ node, edges, nodesById, onClose, onConnect, onRemoveConnection, onFilter }) {
+function NodePanel({ node, edges, nodesById, onClose, onConnect, onRemoveConnection, onFilter, showSimilar }) {
   const [related, setRelated] = useState(null);
   const d = node.data;
   useEffect(() => {
@@ -147,7 +151,7 @@ function NodePanel({ node, edges, nodesById, onClose, onConnect, onRemoveConnect
           </p>
         )}
 
-        {d.kind === 'resource' && (
+        {d.kind === 'resource' && showSimilar && (
           <section>
             <p className="mm-eyebrow mb-2">Related by content</p>
             {!related ? (
@@ -276,6 +280,8 @@ function GraphCanvas() {
   const navigate = useNavigate();
   const { flatCollections, tags: allTags } = useLibrary();
   const { setCenter, fitView } = useReactFlow();
+  const { user } = useAuth();
+  const suggestionsOn = user.preferences?.library?.suggestConnections !== false;
   const [sp, setSp] = useSearchParams();
 
   const filters = {
@@ -310,6 +316,8 @@ function GraphCanvas() {
   const [query, setQuery] = useState('');
   const [focusNeighbours, setFocusNeighbours] = useState(true);
   const [confirmReset, setConfirmReset] = useState(false);
+  const [confirmRemove, setConfirmRemove] = useState(null);
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const pendingPositions = useRef({});
   const saveTimer = useRef(null);
 
@@ -389,7 +397,7 @@ function GraphCanvas() {
         const { connection } = await graphApi.createConnection({ sourceId, targetId });
         setEdges((es) => [
           ...es,
-          { id: `x:${connection.id}`, source: `r:${connection.sourceId}`, target: `r:${connection.targetId}`, data: { kind: 'manual', connectionId: connection.id }, style: EDGE_STYLE.manual, selectable: true },
+          { id: `x:${connection.id}`, source: `r:${connection.sourceId}`, target: `r:${connection.targetId}`, sourceHandle: 'c', targetHandle: 'c', type: 'straight', data: { kind: 'manual', connectionId: connection.id }, style: EDGE_STYLE.manual, selectable: true },
         ]);
         toast.success('Connected');
       } catch (err) {
@@ -400,6 +408,7 @@ function GraphCanvas() {
   );
 
   const removeConnection = async (connectionId) => {
+    setConfirmRemove(null);
     try {
       await graphApi.deleteConnection(connectionId);
       setEdges((es) => es.filter((e) => e.data?.connectionId !== connectionId));
@@ -487,6 +496,11 @@ function GraphCanvas() {
             </ul>
           )}
         </div>
+        <Button variant={filtersOpen ? 'secondary' : 'ghost'} size="sm" icon={SlidersHorizontal} className="sm:hidden" onClick={() => setFiltersOpen((o) => !o)} aria-expanded={filtersOpen}>
+          Filters
+        </Button>
+        {/* On small screens the filters collapse so the canvas keeps most of the space. */}
+        <div className={`${filtersOpen ? 'flex' : 'hidden'} w-full flex-wrap items-center gap-2 sm:flex sm:w-auto`}>
         {['note', 'document', 'link'].map((t) => (
           <Chip
             key={t}
@@ -520,13 +534,16 @@ function GraphCanvas() {
             </option>
           ))}
         </select>
+        </div>
         <div className="ml-auto flex items-center gap-1">
           <Button variant={focusNeighbours ? 'secondary' : 'ghost'} size="sm" icon={Crosshair} onClick={() => setFocusNeighbours((f) => !f)} aria-pressed={focusNeighbours} title="Fade everything except the selected node's neighbours">
             Focus
           </Button>
+          {suggestionsOn && (
           <Button variant={panel === 'suggestions' ? 'secondary' : 'ghost'} size="sm" icon={Lightbulb} onClick={() => setPanel((p) => (p === 'suggestions' ? null : 'suggestions'))}>
             Suggestions{suggestions?.length ? ` (${suggestions.length})` : ''}
           </Button>
+          )}
           <Button variant="ghost" size="sm" iconOnly icon={Maximize} aria-label="Fit to screen" title="Fit to screen" onClick={() => fitView({ duration: 400 })} />
           <Button variant="ghost" size="sm" iconOnly icon={RotateCcw} aria-label="Reset layout" title="Reset layout" onClick={() => setConfirmReset(true)} />
         </div>
@@ -600,7 +617,7 @@ function GraphCanvas() {
           )}
         </div>
 
-        {(selectedNode || selectedEdge || panel === 'suggestions') && (
+        {(selectedNode || selectedEdge || (panel === 'suggestions' && suggestionsOn)) && (
           <div className="absolute inset-x-2 bottom-2 z-10 max-h-[60%] min-h-0 lg:static lg:inset-auto lg:max-h-none lg:w-80">
             {panel === 'suggestions' ? (
               <SuggestionsPanel suggestions={suggestions} generating={generating} onGenerate={generate} onAccept={(s) => decide(s, true)} onDismiss={(s) => decide(s, false)} onClose={() => setPanel(null)} />
@@ -612,19 +629,37 @@ function GraphCanvas() {
                 nodesById={nodesById}
                 onClose={() => setSelection(null)}
                 onConnect={connect}
-                onRemoveConnection={removeConnection}
+                onRemoveConnection={setConfirmRemove}
+                showSimilar={suggestionsOn}
                 onFilter={(f) => {
                   setSelection(null);
                   setFilter(f);
                 }}
               />
             ) : (
-              <EdgePanel key={selectedEdge.id} edge={selectedEdge} nodesById={nodesById} onClose={() => setSelection(null)} onSaveLabel={saveLabel} onRemove={removeConnection} />
+              <EdgePanel key={selectedEdge.id} edge={selectedEdge} nodesById={nodesById} onClose={() => setSelection(null)} onSaveLabel={saveLabel} onRemove={setConfirmRemove} />
             )}
           </div>
         )}
       </div>
 
+      <Dialog
+        open={Boolean(confirmRemove)}
+        onClose={() => setConfirmRemove(null)}
+        tone="danger"
+        title="Remove this connection?"
+        description="The two items stay in your library; only the link between them is removed."
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setConfirmRemove(null)}>
+              Cancel
+            </Button>
+            <Button variant="danger" onClick={() => removeConnection(confirmRemove)}>
+              Remove
+            </Button>
+          </>
+        }
+      />
       <Dialog
         open={confirmReset}
         onClose={() => setConfirmReset(false)}

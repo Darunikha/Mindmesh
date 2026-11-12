@@ -197,7 +197,7 @@ export default function ResourcePage() {
           {resource.type === 'document' && <DocumentView resource={resource} />}
           {resource.type === 'link' && <LinkView resource={resource} />}
         </div>
-        <aside aria-label="Item details" className="space-y-4">
+        <aside aria-label="Item details" className="min-w-0 space-y-4">
           <RelatedPanel resourceId={resource.id} />
           <DetailsPanel resource={resource} onChange={(u) => setResource((prev) => ({ ...u, note: u.note ? { ...u.note, content: prev.note?.content ?? u.note.content } : undefined }))} />
         </aside>

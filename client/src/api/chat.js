@@ -1,10 +1,7 @@
-import { http, streamSse } from './client.js';
+import { http, qs, streamSse } from './client.js';
 
 export const conversationsApi = {
-  list: (params = {}) => {
-    const s = new URLSearchParams(Object.entries(params).filter(([, v]) => v));
-    return http.get(`/conversations${s.toString() ? `?${s}` : ''}`);
-  },
+  list: (params = {}) => http.get(`/conversations${qs(params)}`),
   create: (body = {}) => http.post('/conversations', body),
   get: (id) => http.get(`/conversations/${id}`),
   update: (id, body) => http.patch(`/conversations/${id}`, body),

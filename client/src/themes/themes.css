@@ -16,7 +16,8 @@
   --mm-sunken: #ebdfca;
   --mm-ink: #2a1f17;
   --mm-ink-muted: #6a5646;
-  --mm-ink-faint: #9a8573;
+  /* Darkened in Phase 5 to meet WCAG AA (4.5:1) for small text on paper surfaces. */
+  --mm-ink-faint: #6f5b4b;
   --mm-line: #e0d1ba;
   --mm-line-strong: #c9b496;
   /* Oxblood leather, sage cloth, brass fittings */
@@ -26,7 +27,7 @@
   --mm-accent-soft: #f1dccb;
   --mm-accent-2: #5d6b48;
   --mm-accent-2-soft: #e3e6d2;
-  --mm-accent-3: #a97b2f;
+  --mm-accent-3: #86601f;
   --mm-accent-3-soft: #f1e3c4;
   --mm-danger: #a12f2f;
   --mm-danger-soft: #f6dcd6;
@@ -65,22 +66,23 @@
   --mm-sunken: #efece7;
   --mm-ink: #1d1b26;
   --mm-ink-muted: #625f70;
-  --mm-ink-faint: #9894a6;
+  --mm-ink-faint: #6c687c;
   --mm-line: #e9e5ee;
   --mm-line-strong: #d6d0de;
   --mm-accent: #5b4bdb;
   --mm-accent-hover: #4a3bc6;
   --mm-accent-ink: #ffffff;
   --mm-accent-soft: #ebe8ff;
-  --mm-accent-2: #e8775a;
+  /* Deepened in Phase 5 so accent text meets WCAG AA on soft surfaces. */
+  --mm-accent-2: #a8432a;
   --mm-accent-2-soft: #ffe7de;
-  --mm-accent-3: #2f9d78;
+  --mm-accent-3: #1f7356;
   --mm-accent-3-soft: #d9f3e8;
   --mm-butter: #f4c95d;
   --mm-butter-soft: #fff3cf;
   --mm-danger: #d0414b;
   --mm-danger-soft: #fde3e4;
-  --mm-success: #2f9d78;
+  --mm-success: #1f7356;
   --mm-success-soft: #d9f3e8;
   --mm-focus: #5b4bdb;
 
@@ -114,7 +116,7 @@
   --mm-sunken: #0a1020;
   --mm-ink: #e4e9f4;
   --mm-ink-muted: #95a1ba;
-  --mm-ink-faint: #5d6984;
+  --mm-ink-faint: #7c88a3;
   --mm-line: #1d2742;
   --mm-line-strong: #2b3858;
   --mm-accent: #4fe0c8;

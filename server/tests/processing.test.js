@@ -84,3 +84,26 @@ describe('link safety', () => {
     assert.equal(robotsAllows('', '/x'), true);
   });
 });
+
+describe('link safety at connect time', () => {
+  it('refuses connections whose DNS answer is a private address (DNS-rebinding defence)', async () => {
+    const { default: env } = await import('../src/config/env.js');
+    const { guardedLookup } = await import('../src/processing/linkFetcher.js');
+    env.ALLOW_PRIVATE_LINK_FETCH = false;
+    try {
+      const err = await new Promise((resolve) => guardedLookup('localhost', {}, (e) => resolve(e)));
+      assert.ok(err, 'lookup must fail');
+      assert.equal(err.code, 'FETCH_BLOCKED');
+    } finally {
+      env.ALLOW_PRIVATE_LINK_FETCH = true;
+    }
+  });
+});
+
+describe('password policy', () => {
+  it('rejects passwords bcrypt would silently truncate', async () => {
+    const { passwordSchema } = await import('../src/modules/auth/auth.validators.js');
+    assert.equal(passwordSchema.safeParse('a1'.repeat(36)).success, true); // 72 bytes
+    assert.equal(passwordSchema.safeParse(`a1${'é'.repeat(40)}`).success, false); // 82 bytes
+  });
+});

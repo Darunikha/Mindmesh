@@ -1,5 +1,6 @@
 import Chunk from '../../models/Chunk.js';
 import { getEmbeddingProvider } from '../../ai/providers.js';
+import { getUserVectors } from '../../ai/vectorCache.js';
 
 /**
  * Resource-to-resource similarity for relationship suggestions and "related items".
@@ -26,14 +27,14 @@ function dot(a, b) {
 }
 
 async function embeddingVectors(userId, resourceIds, modelId) {
-  const rows = await Chunk.find({ user: userId, resource: { $in: resourceIds }, embeddingModel: modelId }, { resource: 1, embedding: 1 }).select('+embedding').lean();
+  const wanted = new Set(resourceIds.map(String));
+  const rows = await getUserVectors(userId, modelId);
   const sums = new Map();
   for (const r of rows) {
-    if (!r.embedding?.length) continue;
-    const key = String(r.resource);
-    const acc = sums.get(key);
-    if (!acc) sums.set(key, r.embedding.slice());
-    else for (let i = 0; i < acc.length; i++) acc[i] += r.embedding[i];
+    if (!wanted.has(r.resource)) continue;
+    const acc = sums.get(r.resource);
+    if (!acc) sums.set(r.resource, Array.from(r.vec));
+    else for (let i = 0; i < acc.length; i++) acc[i] += r.vec[i];
   }
   const out = new Map();
   for (const [k, v] of sums) {

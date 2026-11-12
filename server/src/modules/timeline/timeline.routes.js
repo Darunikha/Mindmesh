@@ -3,15 +3,11 @@ import { z } from 'zod';
 import { requireAuth } from '../../middleware/auth.js';
 import { validate } from '../../middleware/validate.js';
 import { ACTIVITY_TYPES } from '../../models/Activity.js';
+import { endOfDay, isoDate } from '../../utils/validators.js';
 import * as service from './timeline.service.js';
 
 const router = Router();
 router.use(requireAuth);
-
-const isoDate = z
-  .string()
-  .regex(/^\d{4}-\d{2}-\d{2}(T[\d:.]+(Z|[+-]\d{2}:\d{2})?)?$/, 'Use a date like 2026-01-31')
-  .refine((v) => !Number.isNaN(new Date(v).getTime()), 'Invalid date');
 
 const listQuery = z.object({
   types: z
@@ -44,7 +40,7 @@ const summaryQuery = z.object({
 router.get('/', validate({ query: listQuery }), async (req, res) => {
   await service.ensureBackfilled(req.user);
   const q = req.validatedQuery;
-  if (q.to && /^\d{4}-\d{2}-\d{2}$/.test(q.to)) q.to = `${q.to}T23:59:59.999Z`;
+  q.to = endOfDay(q.to);
   res.json(await service.listActivity(req.user._id, q));
 });
 

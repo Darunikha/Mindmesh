@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 import Tag from '../../models/Tag.js';
 import Resource from '../../models/Resource.js';
+import GraphLayout from '../../models/GraphLayout.js';
 import ApiError from '../../utils/ApiError.js';
 
 export const serializeTag = (t) => ({ id: t._id.toString(), name: t.name, color: t.color });
@@ -47,6 +48,7 @@ export async function deleteTag(userId, id) {
   const tag = await Tag.findOneAndDelete({ _id: id, user: userId });
   if (!tag) throw ApiError.notFound('Tag not found');
   const res = await Resource.updateMany({ user: userId, tags: tag._id }, { $pull: { tags: tag._id } }, { timestamps: false });
+  await GraphLayout.updateOne({ user: userId }, { $unset: { [`positions.t:${tag._id}`]: 1 } });
   return { detachedFrom: res.modifiedCount };
 }
 

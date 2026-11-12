@@ -65,6 +65,7 @@ export default function AssistantPage() {
   const raf = useRef(0);
   const asstIdRef = useRef(null);
   const autoSent = useRef(false);
+  const sending = useRef(false);
 
   const chatReady = status?.chat?.configured;
 
@@ -222,7 +223,9 @@ export default function AssistantPage() {
 
   const send = useCallback(
     async (text, modeOverride) => {
-      if (stream || !chatReady) return;
+      if (stream || !chatReady || sending.current) return;
+      sending.current = true;
+      try {
       const useMode = modeOverride || mode;
       let convId = id;
       if (!convId) {
@@ -239,6 +242,9 @@ export default function AssistantPage() {
         }
       }
       await runStream(convId, (opts) => conversationsApi.send(convId, { content: text, mode: useMode, clientRequestId: uuid() }, opts), { userText: text, streamMode: useMode });
+      } finally {
+        sending.current = false;
+      }
     },
     [stream, chatReady, mode, id, navigate, runStream]
   );

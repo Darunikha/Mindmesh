@@ -4,6 +4,11 @@ import tailwindcss from '@tailwindcss/vite';
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  test: {
+    environment: 'jsdom',
+    include: ['src/**/*.test.{js,jsx}'],
+    setupFiles: ['src/test/setup.js'],
+  },
   server: {
     port: 5173,
     // Same-origin API in development so the httpOnly refresh cookie just works.

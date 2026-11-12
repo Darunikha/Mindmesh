@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 import env from '../config/env.js';
 import Chunk from '../models/Chunk.js';
+import { dot, getUserVectors } from './vectorCache.js';
 
 /**
  * Semantic nearest-neighbour search over a user's chunk embeddings.
@@ -13,19 +14,12 @@ import Chunk from '../models/Chunk.js';
  * - auto: try Atlas; fall back to local when $vectorSearch is unavailable (local MongoDB,
  *   in-memory dev DB) or the index is missing/still building.
  */
-const LOCAL_SCAN_LIMIT = 50000;
 let atlasState = env.VECTOR_SEARCH === 'local' ? 'unavailable' : 'unknown'; // unknown | available | unavailable
 
 export function vectorSearchMode() {
   if (env.VECTOR_SEARCH === 'local') return 'local';
   if (env.VECTOR_SEARCH === 'atlas') return 'atlas';
   return atlasState === 'available' ? 'atlas' : atlasState === 'unavailable' ? 'local' : 'auto (detecting)';
-}
-
-function dot(a, b) {
-  let s = 0;
-  for (let i = 0; i < a.length; i++) s += a[i] * b[i];
-  return s;
 }
 
 async function atlasSearch(userId, vector, model, limit, resourceIds) {
@@ -49,11 +43,12 @@ async function atlasSearch(userId, vector, model, limit, resourceIds) {
 }
 
 async function localSearch(userId, vector, model, limit, resourceIds) {
-  const rows = await Chunk.find({ user: userId, embeddingModel: model, ...(resourceIds ? { resource: { $in: resourceIds } } : {}) }, { resource: 1, embedding: 1 }).select('+embedding').limit(LOCAL_SCAN_LIMIT).lean();
+  const rows = await getUserVectors(userId, model);
+  const allowed = resourceIds ? new Set(resourceIds.map(String)) : null;
   const scored = [];
   for (const r of rows) {
-    if (!r.embedding || r.embedding.length !== vector.length) continue;
-    scored.push({ _id: r._id, score: dot(vector, r.embedding) });
+    if (r.vec.length !== vector.length || (allowed && !allowed.has(r.resource))) continue;
+    scored.push({ _id: r.id, score: dot(vector, r.vec) });
   }
   scored.sort((a, b) => b.score - a.score);
   const top = scored.slice(0, limit);

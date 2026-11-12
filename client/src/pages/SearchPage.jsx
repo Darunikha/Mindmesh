@@ -138,6 +138,7 @@ export default function SearchPage() {
   const [showFilters, setShowFilters] = useState(false);
   const req = useRef(0);
   const recordTimer = useRef(null);
+  const totalRef = useRef(0);
 
   const update = useCallback(
     (patch) =>
@@ -202,6 +203,7 @@ export default function SearchPage() {
           record: record ? 'true' : undefined,
         });
         if (id !== req.current) return;
+        totalRef.current = res.total;
         setData((prev) => (page === 1 ? res : { ...res, items: [...prev.items, ...res.items] }));
         setStatus('ready');
         if (record) loadRecent();
@@ -219,7 +221,7 @@ export default function SearchPage() {
     run(1);
     // Remember a query once the user has paused on it for a moment.
     clearTimeout(recordTimer.current);
-    if (params.q.length >= 2) recordTimer.current = setTimeout(() => searchApi.search({ q: params.q, limit: 1, record: 'true', mode: 'keyword' }).then(loadRecent).catch(() => {}), 2500);
+    if (params.q.length >= 2) recordTimer.current = setTimeout(() => searchApi.remember(params.q, totalRef.current).then(loadRecent).catch(() => {}), 2500);
     return () => clearTimeout(recordTimer.current);
   }, [run, params.q, loadRecent]);
 
@@ -240,7 +242,7 @@ export default function SearchPage() {
     setDraft(q);
     update({ q });
     setFocused(false);
-    if (q.trim()) searchApi.search({ q, limit: 1, record: 'true', mode: 'keyword' }).then(loadRecent).catch(() => {});
+    if (q.trim().length >= 2) searchApi.remember(q.trim(), totalRef.current).then(loadRecent).catch(() => {});
   };
 
   const dropdownItems = useMemo(() => {

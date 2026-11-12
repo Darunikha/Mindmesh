@@ -3,6 +3,7 @@ import Resource from '../models/Resource.js';
 import Chunk from '../models/Chunk.js';
 import { getEmbeddingProvider } from '../ai/providers.js';
 import { createQueue } from './queue.js';
+import { invalidateUserVectors } from '../ai/vectorCache.js';
 
 /**
  * Embedding pipeline: (chunks already extracted) → embed only passages whose text or model
@@ -78,6 +79,7 @@ export async function embedResource(id) {
       { ordered: false }
     );
     retries.delete(String(id));
+    invalidateUserVectors(resource.user);
     if (!(await Resource.exists({ _id: id }))) {
       await Chunk.deleteMany({ resource: id });
       return undefined;
@@ -125,7 +127,10 @@ export async function recoverEmbeddings() {
 /** User-triggered rebuild. `force` discards existing vectors and re-embeds everything. */
 export async function reindexUser(userId, { force = false } = {}) {
   const provider = getEmbeddingProvider();
-  if (force) await Chunk.updateMany({ user: userId }, { $unset: { embedding: 1 }, $set: { embeddingModel: null, embeddedAt: null } });
+  if (force) {
+    await Chunk.updateMany({ user: userId }, { $unset: { embedding: 1 }, $set: { embeddingModel: null, embeddedAt: null } });
+    invalidateUserVectors(userId);
+  }
   const resources = await Resource.find({ user: userId, 'processing.status': 'ready', 'processing.chunkCount': { $gt: 0 } }, { _id: 1 }).lean();
   await Resource.updateMany({ _id: { $in: resources.map((r) => r._id) } }, { $set: { 'embedding.status': 'pending', 'embedding.error': null } }, { timestamps: false });
   resources.forEach((r) => embeddingQueue.enqueue(r._id));

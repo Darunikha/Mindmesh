@@ -5,7 +5,7 @@ import { useToast } from './ToastContext.jsx';
 import { usersApi } from '../api/endpoints.js';
 import { DEFAULT_THEME, isThemeId } from '../themes/registry.js';
 
-const ThemeContext = createContext(null);
+export const ThemeContext = createContext(null);
 const STORAGE_KEY = 'mm.theme';
 
 function readStoredTheme() {

@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 import Collection, { MAX_COLLECTION_DEPTH } from '../../models/Collection.js';
 import Resource from '../../models/Resource.js';
+import GraphLayout from '../../models/GraphLayout.js';
 import ApiError from '../../utils/ApiError.js';
 import { logActivity } from '../timeline/activity.js';
 
@@ -162,5 +163,6 @@ export async function deleteCollection(userId, id, { moveTo = null } = {}) {
 
   const moved = await Resource.updateMany({ user: userId, collectionId: c._id }, { $set: { collectionId: moveTo || null } }, { timestamps: false });
   await c.deleteOne();
+  await GraphLayout.updateOne({ user: userId }, { $unset: { [`positions.c:${c._id}`]: 1 } });
   return { movedResources: moved.modifiedCount, movedCollections: children.length, movedTo: moveTo || null };
 }

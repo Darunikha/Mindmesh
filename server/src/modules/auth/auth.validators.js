@@ -6,7 +6,9 @@ export const emailSchema = z.string().trim().toLowerCase().pipe(z.email('Enter a
 export const passwordSchema = z
   .string()
   .min(8, 'Use at least 8 characters')
-  .max(128, 'Use at most 128 characters')
+  .max(72, 'Use at most 72 characters')
+  // bcrypt only reads the first 72 bytes; longer passwords would be silently truncated.
+  .refine((v) => Buffer.byteLength(v, 'utf8') <= 72, 'This password is too long once encoded. Use fewer accented letters or emoji.')
   .refine((v) => /[A-Za-z]/.test(v) && /\d/.test(v), 'Include at least one letter and one number');
 
 export const registerSchema = z.object({

@@ -359,7 +359,8 @@
   }
   button.mm-chip { cursor: pointer; }
   button.mm-chip:hover { border-color: var(--mm-ink-faint); color: var(--mm-ink); }
-  .mm-chip[aria-pressed='true'] {
+  .mm-chip[aria-pressed='true'],
+  .mm-chip[data-active='true'] {
     background: var(--mm-accent-soft);
     border-color: var(--mm-accent);
     color: var(--mm-accent);
@@ -652,3 +653,24 @@
 [data-theme='lab'] .mm-gnode-topic { background: var(--mm-accent-2-soft); border: 1px solid var(--mm-accent-2); color: var(--mm-accent-2); border-radius: 999px; font-family: var(--mm-font-mono); }
 [data-theme='lab'] .mm-gnode-collection { background: var(--mm-accent-3-soft); border: 1px dashed var(--mm-accent-3); color: var(--mm-accent-3); border-radius: 4px; font-family: var(--mm-font-mono); text-transform: uppercase; letter-spacing: 0.08em; }
 .mm-gnode.selected-node { box-shadow: 0 0 0 2px var(--mm-accent); }
+.mm-graph .react-flow__handle.mm-center-handle {
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 1px;
+  height: 1px;
+  min-width: 0;
+  min-height: 0;
+  border: 0;
+  opacity: 0 !important;
+  pointer-events: none;
+}
+
+/* ── Phase 5 visual fixes ──────────────────────────────────────────────── */
+/* One clear button per search box: hide the browser's built-in one. */
+input[type='search']::-webkit-search-cancel-button,
+input[type='search']::-webkit-search-decoration { -webkit-appearance: none; appearance: none; }
+/* Code blocks never take inline-code styling, whatever the theme. */
+[data-theme] .mm-prose pre code { background: none; color: inherit; padding: 0; border-radius: 0; font-size: inherit; }
+/* Empty heat-map cells must stay visible on dark surfaces. */
+[data-theme='lab'] .mm-heat-empty { background: var(--mm-line); }

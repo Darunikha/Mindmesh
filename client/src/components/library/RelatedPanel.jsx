@@ -6,11 +6,14 @@ import Skeleton from '../ui/Skeleton.jsx';
 import { TypeBadge } from './Badges.jsx';
 import { graphApi } from '../../api/discovery.js';
 import { useToast } from '../../context/ToastContext.jsx';
+import { useAuth } from '../../context/AuthContext.jsx';
 
 /** Explicit connections and content-similar items for one resource, with one-click linking. */
 export default function RelatedPanel({ resourceId }) {
   const toast = useToast();
   const [data, setData] = useState(null);
+  const { user } = useAuth();
+  const showSimilar = user.preferences?.library?.suggestConnections !== false;
 
   const load = () =>
     graphApi
@@ -44,7 +47,7 @@ export default function RelatedPanel({ resourceId }) {
       </div>
       {!data ? (
         <Skeleton lines={3} />
-      ) : !data.connected.length && !data.similar.length ? (
+      ) : !data.connected.length && !(showSimilar && data.similar.length) ? (
         <p className="font-ui text-xs text-ink-faint">No related items yet.</p>
       ) : (
         <ul className="space-y-1.5">
@@ -57,7 +60,7 @@ export default function RelatedPanel({ resourceId }) {
               {c.label && <span className="truncate font-ui text-[0.7rem] text-ink-faint">{c.label}</span>}
             </li>
           ))}
-          {data.similar.map((s) => (
+          {showSimilar && data.similar.map((s) => (
             <li key={s.id} className="flex items-center gap-2">
               <TypeBadge type={s.type} withIcon={false} className="w-14 shrink-0" />
               <Link to={`/vault/${s.id}`} className="min-w-0 flex-1 truncate font-ui text-sm text-ink-muted hover:text-accent">

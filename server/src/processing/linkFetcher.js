@@ -68,7 +68,8 @@ export class FetchError extends Error {
   }
 }
 
-function guardedLookup(hostname, options, callback) {
+/** DNS lookup used for every outbound connection; exported for tests. */
+export function guardedLookup(hostname, options, callback) {
   dns.lookup(hostname, { ...options, all: true }, (err, addresses) => {
     if (err) return callback(new FetchError(`Could not find the website "${hostname}".`, 'FETCH_DNS'));
     const list = Array.isArray(addresses) ? addresses : [{ address: addresses, family: options.family || 4 }];

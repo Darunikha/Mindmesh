@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 import { refreshSession, setAccessToken, setSessionLostHandler } from '../api/client.js';
 import { authApi } from '../api/endpoints.js';
 
-const AuthContext = createContext(null);
+export const AuthContext = createContext(null);
 
 /**
  * status: 'loading' while restoring a session on boot, then 'authenticated' or 'anonymous'.
@@ -21,13 +21,20 @@ export function AuthProvider({ children }) {
   // Restore a session from the httpOnly refresh cookie on first load.
   useEffect(() => {
     let cancelled = false;
-    refreshSession()
-      .then((data) => {
-        if (cancelled) return;
-        setUser(data.user);
-        setStatus('authenticated');
-      })
-      .catch(() => !cancelled && clear());
+    // Restore the session; retry once on network or rate-limit errors before giving up.
+    const restore = (attempt) =>
+      refreshSession()
+        .then((data) => {
+          if (cancelled) return;
+          setUser(data.user);
+          setStatus('authenticated');
+        })
+        .catch((err) => {
+          if (cancelled) return;
+          if (err.status !== 401 && attempt === 0) setTimeout(() => restore(1), 1500);
+          else clear();
+        });
+    restore(0);
     return () => {
       cancelled = true;
     };

@@ -42,6 +42,7 @@ export function serializeMessage(m) {
       similarity: c.similarity,
       matchedBy: c.matchedBy,
       cited: c.cited,
+      resourceDeleted: Boolean(c.resourceDeleted),
     })),
     retrieval: m.retrieval?.searched || m.retrieval?.note ? m.retrieval : null,
     followUps: m.followUps || [],

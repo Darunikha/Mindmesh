@@ -63,7 +63,7 @@ function Segmented({ value, onChange, options, label }) {
 function MiniList({ title, items }) {
   if (!items?.length) return null;
   return (
-    <section className="mm-card p-4" aria-label={title}>
+    <section className="mm-card min-w-0 p-4" aria-label={title}>
       <p className="mm-eyebrow mb-3">{title}</p>
       <ul className="space-y-1">
         {items.map((r) => (
@@ -283,7 +283,7 @@ export default function VaultPage() {
               </div>
             }
           >
-            Add your first note, PDF, Word document or web page. Everything you add becomes searchable, and in Phase 3 the assistant can answer from it.
+            Add your first note, PDF, Word document or web page. Everything you add becomes searchable, and the assistant can answer from it in My Knowledge mode.
           </EmptyState>
         </div>
       ) : (
@@ -387,7 +387,7 @@ export default function VaultPage() {
 
             {/* Pinned + recents when browsing the whole vault */}
             {!isFiltered && overview && (overview.pinned.length > 0 || overview.recentlyAccessed.length > 0) && (
-              <div className="grid gap-4 xl:grid-cols-2">
+              <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
                 <MiniList title="Pinned" items={overview.pinned.slice(0, 5)} />
                 <MiniList title="Recently opened" items={overview.recentlyAccessed.slice(0, 5)} />
               </div>

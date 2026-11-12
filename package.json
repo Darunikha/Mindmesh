@@ -10,10 +10,13 @@
   "scripts": {
     "dev": "concurrently -n server,client -c magenta,cyan \"npm:dev -w server\" \"npm:dev -w client\"",
     "build": "npm run build -w client",
-    "test": "npm test -w server",
-    "lint": "npm run lint -w client"
+    "test": "npm test -w server && npm test -w client",
+    "lint": "npm run lint -w client",
+    "check:ui": "node scripts/ui-check.mjs"
   },
   "devDependencies": {
-    "concurrently": "^10.0.7"
+    "axe-core": "^4.14.0",
+    "concurrently": "^10.0.7",
+    "playwright-core": "^1.65.0"
   }
 }

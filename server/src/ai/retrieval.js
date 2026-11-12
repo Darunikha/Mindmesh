@@ -4,6 +4,7 @@ import Chunk from '../models/Chunk.js';
 import Resource from '../models/Resource.js';
 import { getEmbeddingProvider } from './providers.js';
 import { vectorSearch } from './vectorSearch.js';
+import { embedQuery } from './queryEmbedding.js';
 
 /**
  * Hybrid retrieval for "My Knowledge" answers.
@@ -36,7 +37,7 @@ export async function retrieve(userId, query, { limit = env.RAG_TOP_K } = {}) {
   let semanticError = null;
   if (provider) {
     try {
-      const [vector] = await provider.embed([query], { inputType: 'query' });
+      const vector = await embedQuery(provider, query);
       const res = await vectorSearch(user, vector, provider.id, { limit: 24 });
       strategy = res.strategy === 'atlas' ? 'hybrid (Atlas vector + keyword)' : 'hybrid (vector + keyword)';
       res.hits.forEach((h, i) => add(h, 'vectorRank', i + 1, h.score));

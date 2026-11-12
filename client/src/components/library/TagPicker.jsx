@@ -67,7 +67,7 @@ export default function TagPicker({ value, onChange, label = 'Tags', max = 20, c
         onClick={() => inputRef.current?.focus()}
       >
         {value.map((name) => (
-          <span key={name} className="mm-chip !py-0.5" aria-pressed="true">
+          <span key={name} className="mm-chip !py-0.5" data-active="true">
             {name}
             <button type="button" onClick={() => remove(name)} className="-mr-1 rounded-full p-0.5 hover:bg-surface" aria-label={`Remove tag ${name}`}>
               <X size={11} />

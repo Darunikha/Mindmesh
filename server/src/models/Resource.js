@@ -62,6 +62,8 @@ const resourceSchema = new mongoose.Schema(
       attempts: { type: Number, default: 0 },
       chunkCount: { type: Number, default: 0 },
       charCount: { type: Number, default: 0 },
+      /** Informational note, e.g. when a very long item was only partly indexed. */
+      note: { type: String, default: null },
     },
 
     /** Semantic index state (Phase 3). 'disabled' means no embedding provider is configured. */

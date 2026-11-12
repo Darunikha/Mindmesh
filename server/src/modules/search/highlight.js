@@ -1,3 +1,5 @@
+import { escapeRegex } from '../../utils/validators.js';
+
 /**
  * Query-term highlighting. Terms are lightly stemmed so "learning" also highlights "learn"
  * and "learned". Returns character ranges rather than HTML, so the client renders <mark>
@@ -18,7 +20,7 @@ export function queryTerms(q) {
 
 function termRegex(terms) {
   if (!terms.length) return null;
-  const escaped = terms.map((t) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).sort((a, b) => b.length - a.length);
+  const escaped = terms.map(escapeRegex).sort((a, b) => b.length - a.length);
   return new RegExp(`(?<![\\p{L}\\p{N}])(${escaped.join('|')})[\\p{L}\\p{N}'-]*`, 'giu');
 }
 

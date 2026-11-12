@@ -50,7 +50,7 @@ function HeatStrip({ summary }) {
     cells.push({ d, n });
   }
   const level = (n) => (n === 0 ? 0 : Math.min(4, Math.ceil((n / Math.max(max, 1)) * 4)));
-  const shades = ['bg-sunken', 'bg-accent/25', 'bg-accent/45', 'bg-accent/70', 'bg-accent'];
+  const shades = ['bg-sunken mm-heat-empty', 'bg-accent/25', 'bg-accent/45', 'bg-accent/70', 'bg-accent'];
   return (
     <div className="overflow-x-auto">
       <div className="grid w-max grid-flow-col grid-rows-7 gap-[3px]" role="img" aria-label="Activity over the last 12 weeks">
@@ -191,7 +191,7 @@ export default function TimelinePage() {
       <PageHeader eyebrow={theme === 'library' ? 'The Archive' : theme === 'lab' ? '03 / Analysis · log' : 'Discover'} title="Knowledge Timeline" description="How your library has grown: what you added, connected, asked and revisited." />
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
-        <section aria-label="Activity" className="order-2 lg:order-1">
+        <section aria-label="Activity" className="order-2 min-w-0 lg:order-1">
           {status === 'error' && <Alert tone="error">{error}</Alert>}
           {status === 'loading' ? (
             <div className="space-y-3">
@@ -236,7 +236,7 @@ export default function TimelinePage() {
           )}
         </section>
 
-        <aside className="order-1 space-y-4 lg:order-2" aria-label="Timeline filters">
+        <aside className="order-1 min-w-0 space-y-4 lg:order-2" aria-label="Timeline filters">
           <div className="mm-card p-4">
             <p className="mm-eyebrow mb-3">Last 12 weeks</p>
             {summary ? <HeatStrip summary={summary} /> : <Skeleton className="h-24" />}
@@ -259,7 +259,7 @@ export default function TimelinePage() {
           </div>
           <div className="mm-card p-4">
             <p className="mm-eyebrow mb-3">Date range</p>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-1">
               <label className="font-ui text-xs text-ink-muted">
                 From
                 <input type="date" className="mm-input mt-1 !min-h-9 !py-1 text-sm" value={from} max={to || undefined} onChange={(e) => set({ from: e.target.value })} />

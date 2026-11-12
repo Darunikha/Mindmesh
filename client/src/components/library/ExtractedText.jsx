@@ -5,8 +5,8 @@ import Skeleton from '../ui/Skeleton.jsx';
 import Alert from '../ui/Alert.jsx';
 
 /**
- * Shows the indexed passages exactly as they are stored for search (and, from Phase 3, for the
- * assistant). Consecutive passages overlap slightly by design.
+ * Shows the indexed passages exactly as they are stored for search and for the
+ * assistant. Consecutive passages overlap slightly by design.
  */
 export default function ExtractedText({ resourceId, total, refreshKey }) {
   const [chunks, setChunks] = useState([]);

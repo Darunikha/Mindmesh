@@ -13,3 +13,12 @@ export const nullableObjectId = z
 export const tagNames = z.array(z.string().trim().min(1).max(40)).max(20, 'Use up to 20 tags');
 
 export const escapeRegex = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/** YYYY-MM-DD or a full ISO timestamp. */
+export const isoDate = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}(T[\d:.]+(Z|[+-]\d{2}:\d{2})?)?$/, 'Use a date like 2026-01-31')
+  .refine((v) => !Number.isNaN(new Date(v).getTime()), 'Invalid date');
+
+/** Expands a bare end date (YYYY-MM-DD) to the end of that day. */
+export const endOfDay = (v) => (v && /^\d{4}-\d{2}-\d{2}$/.test(v) ? `${v}T23:59:59.999Z` : v);

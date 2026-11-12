@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { useTheme } from '../../context/ThemeContext.jsx';
 import { useLibrary } from '../../context/LibraryContext.jsx';
 import { cn } from '../../lib/cn.js';
+import Highlight from '../discovery/Highlight.jsx';
 import { formatDate, relativeTime } from '../../lib/format.js';
 import { StatusBadge, TypeBadge } from './Badges.jsx';
 import { TYPE_ICONS, TYPE_TINT, resourceDetail, resourcePath } from './resourceMeta.js';
@@ -35,7 +36,7 @@ function Snippet({ resource }) {
   return (
     <p className="line-clamp-3 font-ui text-[0.88rem] leading-relaxed text-ink-muted library:font-body library:text-[0.95rem]">
       {resource.match?.page ? <span className="mr-1 font-mono text-[0.7rem] text-accent">p.{resource.match.page}</span> : null}
-      {text}
+      {resource.match?.snippet ? <Highlight text={text} ranges={resource.match.highlights} /> : text}
     </p>
   );
 }
@@ -78,7 +79,6 @@ export default function ResourceCard({ resource, index = 0 }) {
       <Link
         to={resourcePath(resource)}
         className={cn('mm-card mm-card-interactive group flex h-full flex-col overflow-hidden', theme === 'library' && 'mm-card-ruled')}
-        aria-label={`${resource.title}${resource.pinned ? ' (pinned)' : ''}`}
       >
         {/* ── Library: catalogue card with a coloured spine and catalogue number ── */}
         {theme === 'library' && (

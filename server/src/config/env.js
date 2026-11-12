@@ -25,6 +25,8 @@ const schema = z.object({
 
   BCRYPT_ROUNDS: z.coerce.number().int().min(4).max(15).default(12),
   TRUST_PROXY: bool,
+  /** Requests per minute per IP across the whole API. */
+  API_RATE_LIMIT_PER_MIN: z.coerce.number().int().min(60).max(100000).default(1200),
 
   // Phase 2: knowledge library
   UPLOAD_DIR: z.string().default('./uploads'),

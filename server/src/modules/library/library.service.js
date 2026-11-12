@@ -7,8 +7,9 @@ import Connection from '../../models/Connection.js';
 import Activity from '../../models/Activity.js';
 import SearchHistory from '../../models/SearchHistory.js';
 import GraphLayout from '../../models/GraphLayout.js';
+import Message from '../../models/Message.js';
+import { invalidateUserVectors } from '../../ai/vectorCache.js';
 import ApiError from '../../utils/ApiError.js';
-import { escapeRegex } from '../../utils/validators.js';
 import { FILE_TYPES, titleFromFilename } from '../../processing/fileTypes.js';
 import { moveIntoStorage, removeFile, removeUserFiles, openStream, fileExists } from '../../processing/storage.js';
 import { EMPTY_DOC, NoteContentError, countWords, docToSegments, sanitizeDoc } from '../../processing/noteContent.js';
@@ -16,6 +17,7 @@ import { FetchError, validatePublicUrl } from '../../processing/linkFetcher.js';
 import { enqueue, indexNote } from '../../processing/processor.js';
 import { assertCollectionOwned } from '../collections/collections.service.js';
 import { logActivity } from '../timeline/activity.js';
+import { search as runSearch } from '../search/search.service.js';
 
 const OPEN_LOG_INTERVAL_MS = 30 * 60 * 1000;
 import { resolveTagNames, serializeTag } from '../tags/tags.service.js';
@@ -44,6 +46,7 @@ export function serializeResource(r, { withContent = false } = {}) {
       chunkCount: r.processing?.chunkCount || 0,
       charCount: r.processing?.charCount || 0,
       completedAt: r.processing?.completedAt || null,
+      note: r.processing?.note || null,
     },
     semanticIndex: {
       status: r.embedding?.status || 'none',
@@ -113,76 +116,29 @@ function buildFilter(userId, q) {
   return filter;
 }
 
-/** Builds a short snippet around the first matching query term. */
-function snippetFor(text, terms, size = 220) {
-  if (!text) return null;
-  const lower = text.toLowerCase();
-  let pos = -1;
-  for (const t of terms) {
-    pos = lower.indexOf(t);
-    if (pos !== -1) break;
-  }
-  const start = Math.max(0, pos === -1 ? 0 : pos - 70);
-  const slice = text.slice(start, start + size).replace(/\s+/g, ' ').trim();
-  return `${start > 0 ? '…' : ''}${slice}${start + size < text.length ? '…' : ''}`;
-}
-
 /**
- * Keyword search across titles, descriptions and the full extracted text of every item.
- * Combines MongoDB text-index scores from resources (title-weighted) and chunks (content),
- * plus a case-insensitive title prefix match so partial words still find things.
- * Semantic (embedding) search arrives in Phase 4 on top of the same chunks.
+ * The vault's search box uses the same ranking as Smart Search (titles, full text and,
+ * when configured, meaning), adapted to the vault's list shape and filters.
  */
 async function search(userId, q) {
-  const user = oid(userId);
-  const terms = q.q.toLowerCase().split(/\s+/).filter((t) => t.length > 1);
-  const scores = new Map();
-  const matches = new Map();
-  const bump = (id, s) => scores.set(String(id), (scores.get(String(id)) || 0) + s);
-
-  const [resHits, chunkHits, titleHits] = await Promise.all([
-    Resource.find({ user, $text: { $search: q.q } }, { score: { $meta: 'textScore' } })
-      .sort({ score: { $meta: 'textScore' } })
-      .limit(300)
-      .lean(),
-    Chunk.aggregate([
-      { $match: { $text: { $search: q.q }, user } },
-      { $project: { resource: 1, text: 1, page: 1, heading: 1, score: { $meta: 'textScore' } } },
-      { $sort: { score: -1 } },
-      { $limit: 600 },
-      { $group: { _id: '$resource', score: { $max: '$score' }, hits: { $sum: 1 }, best: { $first: '$$ROOT' } } },
-    ]),
-    Resource.find({ user, title: { $regex: escapeRegex(q.q.slice(0, 100)), $options: 'i' } }, { _id: 1 })
-      .limit(200)
-      .lean(),
-  ]);
-
-  for (const r of resHits) bump(r._id, r.score * 1.5);
-  for (const c of chunkHits) {
-    bump(c._id, c.score + Math.log2(1 + c.hits) * 0.25);
-    matches.set(String(c._id), { snippet: snippetFor(c.best.text, terms), page: c.best.page, heading: c.best.heading });
-  }
-  for (const r of titleHits) bump(r._id, 1);
-
-  const ids = [...scores.keys()].map(oid);
-  if (!ids.length) return { items: [], total: 0 };
-
-  const filter = { ...buildFilter(userId, q), _id: { $in: ids } };
-  let docs = await Resource.find(filter).populate(TAG_POPULATE).lean();
-
-  const sort = q.sort || 'relevance';
-  if (sort === 'relevance') docs.sort((a, b) => scores.get(String(b._id)) - scores.get(String(a._id)));
-  else if (sort === 'title') docs.sort((a, b) => a.title.localeCompare(b.title, undefined, { sensitivity: 'base' }));
-  else {
-    const key = { updated: 'updatedAt', created: 'createdAt', accessed: 'lastAccessedAt' }[sort];
-    docs.sort((a, b) => new Date(b[key] || 0) - new Date(a[key] || 0));
-  }
-
-  const total = docs.length;
-  docs = docs.slice((q.page - 1) * q.limit, q.page * q.limit);
+  const res = await runSearch(userId, {
+    q: q.q,
+    mode: 'smart',
+    type: q.type ? [q.type] : [],
+    collection: q.collection,
+    tags: q.tags,
+    pinned: q.pinned,
+    status: q.status,
+    sort: q.sort || 'relevance',
+    page: q.page,
+    limit: q.limit,
+  });
   return {
-    total,
-    items: docs.map((d) => ({ ...serializeResource(d), match: matches.get(String(d._id)) || null, score: Number(scores.get(String(d._id)).toFixed(3)) })),
+    total: res.total,
+    items: res.items.map((i) => {
+      const p = i.passages[0];
+      return { ...i.resource, score: i.score, match: p ? { snippet: p.text, highlights: p.highlights, page: p.page, heading: p.heading } : null };
+    }),
   };
 }
 
@@ -407,6 +363,14 @@ export async function deleteResource(userId, id) {
   if (!r) throw ApiError.notFound('This item does not exist or you do not have access to it');
   await Chunk.deleteMany({ resource: r._id });
   await Connection.deleteMany({ user: userId, $or: [{ a: r._id }, { b: r._id }] });
+  await GraphLayout.updateOne({ user: userId }, { $unset: { [`positions.r:${r._id}`]: 1 } });
+  // Past answers keep their quoted excerpt, but no longer link to an item that is gone.
+  await Message.updateMany(
+    { user: userId, 'citations.resourceId': r._id },
+    { $set: { 'citations.$[c].resourceDeleted': true } },
+    { arrayFilters: [{ 'c.resourceId': r._id }] }
+  );
+  invalidateUserVectors(userId);
   if (r.file?.storageKey) await removeFile(r.file.storageKey);
 }
 
@@ -457,5 +421,6 @@ export async function deleteAllForUser(userId) {
     SearchHistory.deleteMany({ user: userId }),
     GraphLayout.deleteMany({ user: userId }),
   ]);
+  invalidateUserVectors(userId);
   await removeUserFiles(userId);
 }

@@ -2,7 +2,6 @@ import { LayoutGrid, List } from 'lucide-react';
 import Card, { CardHeader } from '../../components/ui/Card.jsx';
 import ChoiceCards from '../../components/ui/ChoiceCards.jsx';
 import Toggle from '../../components/ui/Toggle.jsx';
-import Alert from '../../components/ui/Alert.jsx';
 import { SelectField } from '../../components/ui/Field.jsx';
 import { usePreferences } from '../../hooks/usePreferences.js';
 
@@ -23,8 +22,6 @@ export default function LibrarySection() {
 
   return (
     <>
-      <Alert tone="info">The Knowledge Vault ships in Phase 2. These defaults are saved now and used when it opens.</Alert>
-
       <Card className="p-5 sm:p-6">
         <CardHeader eyebrow="Browsing" title="How your library is shown" />
         <div className="mt-5 space-y-5">
@@ -43,22 +40,18 @@ export default function LibrarySection() {
       </Card>
 
       <Card className="p-5 sm:p-6">
-        <CardHeader eyebrow="Processing" title="Documents and connections" />
+        <CardHeader eyebrow="Knowledge graph" title="Connections" />
         <div className="mt-4 space-y-4">
           <Toggle
-            label="Process uploads automatically"
-            description="Extract text, chunk and index new documents for search as soon as they're uploaded."
-            checked={lib.autoProcessUploads}
-            onChange={(v) => save({ library: { autoProcessUploads: v } })}
-          />
-          <hr className="mm-rule" />
-          <Toggle
             label="Suggest connections"
-            description="Let Mindmesh propose related notes for your review. Nothing is linked without your approval."
+            description="Show AI-suggested relationships in the Knowledge Graph and “related” hints on items. Nothing is linked without your approval."
             checked={lib.suggestConnections}
             onChange={(v) => save({ library: { suggestConnections: v } })}
           />
         </div>
+        <p className="mt-4 font-ui text-xs text-ink-faint">
+          Uploaded documents and saved links are always processed in the background, because search and the assistant rely on their extracted text.
+        </p>
       </Card>
     </>
   );

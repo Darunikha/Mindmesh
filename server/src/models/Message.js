@@ -18,6 +18,8 @@ const citationSchema = new mongoose.Schema(
     similarity: { type: Number, default: null },
     matchedBy: { type: [String], default: [] },
     cited: { type: Boolean, default: false },
+    /** Set when the source item is later deleted, so the UI stops linking to it. */
+    resourceDeleted: { type: Boolean, default: false },
   },
   { _id: false }
 );

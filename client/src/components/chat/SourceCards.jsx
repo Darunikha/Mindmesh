@@ -40,11 +40,17 @@ function SourceCard({ c, highlighted }) {
               </span>
             )}
           </div>
-          <Link to={`/vault/${c.resourceId}`} className="group mt-1 flex items-center gap-1 font-ui text-sm font-semibold text-ink hover:text-accent library:font-display library:text-base">
-            <span className="truncate">{c.title}</span>
-            <ArrowUpRight size={13} className="shrink-0 opacity-50 group-hover:opacity-100" aria-hidden />
-            <span className="sr-only">(open source)</span>
-          </Link>
+          {c.resourceDeleted ? (
+            <p className="mt-1 font-ui text-sm font-semibold text-ink-faint library:font-display library:text-base">
+              <span className="line-through">{c.title}</span> <span className="font-normal no-underline">(source deleted)</span>
+            </p>
+          ) : (
+            <Link to={`/vault/${c.resourceId}`} className="group mt-1 flex items-center gap-1 font-ui text-sm font-semibold text-ink hover:text-accent library:font-display library:text-base">
+              <span className="truncate">{c.title}</span>
+              <ArrowUpRight size={13} className="shrink-0 opacity-50 group-hover:opacity-100" aria-hidden />
+              <span className="sr-only">(open source)</span>
+            </Link>
+          )}
           <p className="mt-1 line-clamp-3 font-body text-[0.84rem] leading-relaxed text-ink-muted library:italic">{c.excerpt}</p>
         </div>
       </div>

@@ -16,7 +16,7 @@ function Meta({ label, children }) {
   return (
     <div className="flex items-baseline justify-between gap-3 py-1.5">
       <dt className="font-ui text-xs text-ink-faint">{label}</dt>
-      <dd className="min-w-0 truncate text-right font-ui text-xs text-ink lab:font-mono">{children}</dd>
+      <dd className="min-w-0 text-right font-ui text-xs break-words text-ink lab:font-mono">{children}</dd>
     </div>
   );
 }
@@ -89,6 +89,7 @@ export default function DetailsPanel({ resource, onChange }) {
           {(p.status === 'pending' || p.status === 'processing') && (
             <p className="mb-3 font-ui text-xs text-ink-muted">Extracting and indexing text. This page updates automatically.</p>
           )}
+          {p.note && <p className="mb-3 font-ui text-xs text-ink-muted">{p.note}</p>}
           <dl className="divide-y divide-line">
             <Meta label="Passages">{p.chunkCount}</Meta>
             <Meta label="Characters">{p.charCount.toLocaleString()}</Meta>

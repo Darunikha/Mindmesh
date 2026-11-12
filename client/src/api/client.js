@@ -95,8 +95,10 @@ export async function api(path, options = {}) {
       try {
         await refreshSession();
       } catch (refreshErr) {
-        setAccessToken(null);
-        onSessionLost(refreshErr);
+        if (refreshErr.status === 401) {
+          setAccessToken(null);
+          onSessionLost(refreshErr);
+        }
         throw refreshErr;
       }
       return api(path, { ...options, _retried: true });
@@ -104,6 +106,17 @@ export async function api(path, options = {}) {
     onSessionLost(err);
     throw err;
   }
+}
+
+/** Builds a query string, skipping empty values and joining arrays with commas. */
+export function qs(params) {
+  const s = new URLSearchParams();
+  for (const [k, v] of Object.entries(params)) {
+    if (v === undefined || v === null || v === '' || (Array.isArray(v) && !v.length)) continue;
+    s.set(k, Array.isArray(v) ? v.join(',') : String(v));
+  }
+  const str = s.toString();
+  return str ? `?${str}` : '';
 }
 
 export const http = {

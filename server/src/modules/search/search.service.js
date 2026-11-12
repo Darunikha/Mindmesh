@@ -7,6 +7,7 @@ import Collection from '../../models/Collection.js';
 import SearchHistory from '../../models/SearchHistory.js';
 import { getEmbeddingProvider } from '../../ai/providers.js';
 import { vectorSearch } from '../../ai/vectorSearch.js';
+import { embedQuery } from '../../ai/queryEmbedding.js';
 import { escapeRegex } from '../../utils/validators.js';
 import { serializeResource } from '../library/library.service.js';
 import { logActivity } from '../timeline/activity.js';
@@ -24,6 +25,8 @@ function resourceFilter(userId, p) {
   if (p.type?.length) f.type = { $in: p.type };
   if (p.collection) f.collectionId = p.collection === 'none' ? null : oid(p.collection);
   if (p.tags?.length) f.tags = { $all: p.tags.map(oid) };
+  if (p.pinned !== undefined) f.pinned = p.pinned;
+  if (p.status) f['processing.status'] = p.status;
   if (p.from || p.to) {
     f.createdAt = {};
     if (p.from) f.createdAt.$gte = new Date(p.from);
@@ -32,7 +35,7 @@ function resourceFilter(userId, p) {
   return f;
 }
 
-const hasFilters = (p) => Boolean(p.type?.length || p.collection || p.tags?.length || p.from || p.to);
+const hasFilters = (p) => Boolean(p.type?.length || p.collection || p.tags?.length || p.from || p.to || p.pinned !== undefined || p.status);
 
 /**
  * Unified search across the user's library.
@@ -85,9 +88,8 @@ export async function search(userId, p) {
       semantic.reason = 'Semantic search needs an embedding provider (see Settings → AI assistant). Showing keyword matches.';
     } else {
       tasks.push(
-        provider
-          .embed([p.q], { inputType: 'query' })
-          .then(([vec]) => vectorSearch(user, vec, provider.id, { limit: 80, resourceIds: allowed }))
+        embedQuery(provider, p.q)
+          .then((vec) => vectorSearch(user, vec, provider.id, { limit: 80, resourceIds: allowed }))
           .then((res) => {
             lists.semantic = res.hits.filter((h) => h.score >= env.RAG_MIN_SCORE);
             semantic = { ...semantic, used: true, strategy: res.strategy };
@@ -128,8 +130,12 @@ export async function search(userId, p) {
   if (!ids.length) return emptyResult(p, provider, wantSemantic, semantic);
 
   let docs = await Resource.find({ _id: { $in: ids.map(oid) }, user }).populate(TAG_POPULATE).lean();
-  if (p.sort === 'newest') docs.sort((a, b) => b.createdAt - a.createdAt);
+  const by = (key) => (a, b) => new Date(b[key] || 0) - new Date(a[key] || 0);
+  if (p.sort === 'newest' || p.sort === 'created') docs.sort(by('createdAt'));
   else if (p.sort === 'oldest') docs.sort((a, b) => a.createdAt - b.createdAt);
+  else if (p.sort === 'updated') docs.sort(by('updatedAt'));
+  else if (p.sort === 'accessed') docs.sort(by('lastAccessedAt'));
+  else if (p.sort === 'title') docs.sort((a, b) => a.title.localeCompare(b.title, undefined, { sensitivity: 'base' }));
   else docs.sort((a, b) => byResource.get(String(b._id)).score - byResource.get(String(a._id)).score);
 
   const total = docs.length;

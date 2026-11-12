@@ -1,14 +1,4 @@
-import { fetchBlob, http, uploadWithProgress } from './client.js';
-
-function qs(params) {
-  const s = new URLSearchParams();
-  for (const [k, v] of Object.entries(params)) {
-    if (v === undefined || v === null || v === '' || (Array.isArray(v) && !v.length)) continue;
-    s.set(k, Array.isArray(v) ? v.join(',') : String(v));
-  }
-  const str = s.toString();
-  return str ? `?${str}` : '';
-}
+import { fetchBlob, http, qs, uploadWithProgress } from './client.js';
 
 export const libraryApi = {
   list: (params, opts) => http.get(`/resources${qs(params)}`, opts),
