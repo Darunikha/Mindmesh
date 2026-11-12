@@ -14,6 +14,9 @@ import collectionRoutes from './modules/collections/collections.routes.js';
 import tagRoutes from './modules/tags/tags.routes.js';
 import chatRoutes from './modules/chat/chat.routes.js';
 import aiRoutes from './modules/ai/ai.routes.js';
+import searchRoutes from './modules/search/search.routes.js';
+import graphRoutes from './modules/graph/graph.routes.js';
+import timelineRoutes from './modules/timeline/timeline.routes.js';
 import './ai/index.js';
 
 export function createApp() {
@@ -50,6 +53,9 @@ export function createApp() {
   app.use('/api/tags', tagRoutes);
   app.use('/api/conversations', chatRoutes);
   app.use('/api/ai', aiRoutes);
+  app.use('/api/search', searchRoutes);
+  app.use('/api/graph', graphRoutes);
+  app.use('/api/timeline', timelineRoutes);
 
   app.use('/api', notFoundHandler);
   app.use(errorHandler);

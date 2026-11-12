@@ -39,14 +39,34 @@ registerChatProvider('fake', () => ({
   async completeJson({ prompt }) {
     calls.json.push(prompt);
     if (prompt.includes('running summary')) return { summary: 'Earlier the user discussed topic X.' };
+    if (prompt.includes('numbered pair')) {
+      const lines = prompt.split('\n');
+      const n = lines.filter((l) => /^\d+\. A:/.test(l)).length;
+      // Pairs whose text mentions UNRELATED are rejected, to test the review filter.
+      return {
+        pairs: Array.from({ length: n }, (_, index) => {
+          const i = lines.findIndex((l) => l.startsWith(`${index}. A:`));
+          const pairText = `${lines[i]} ${lines[i + 1] || ''}`;
+          return { index, related: !pairText.includes('UNRELATED'), label: 'same topic', reason: 'Both cover the same idea.' };
+        }),
+      };
+    }
     return { title: 'Fake Title', followUps: ['What next?', 'Tell me more?'] };
   },
 }));
 
-/** Deterministic bag-of-words "embedding": shared words → similar vectors. */
+/** Words that mean related things share a concept token, so this double behaves "semantically". */
+const CONCEPTS = {
+  conceptml: ['learn', 'learns', 'learning', 'train', 'trains', 'training', 'example', 'examples', 'data', 'neural', 'network', 'networks', 'weights', 'computers'],
+  conceptfood: ['bake', 'baking', 'bread', 'sourdough', 'flour', 'oven', 'recipe', 'starter'],
+};
+const conceptOf = new Map(Object.entries(CONCEPTS).flatMap(([c, words]) => words.map((w) => [w, c])));
+
+/** Deterministic bag-of-words "embedding": shared words (or concepts) → similar vectors. */
 function hashVector(text, dims = 64) {
   const v = new Array(dims).fill(0);
-  for (const w of text.toLowerCase().match(/[a-z]{3,}/g) || []) {
+  for (const raw of text.toLowerCase().match(/[a-z]{3,}/g) || []) {
+    const w = conceptOf.get(raw) || raw;
     let h = 0;
     for (const ch of w) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
     v[h % dims] += 1;

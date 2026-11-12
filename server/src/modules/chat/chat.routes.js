@@ -11,6 +11,7 @@ import { CHAT_MODES } from '../../models/Conversation.js';
 import { getChatProvider } from '../../ai/providers.js';
 import * as service from './chat.service.js';
 import { runGeneration } from './generation.js';
+import { logActivity } from '../timeline/activity.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -82,6 +83,10 @@ router.post('/:id/messages', generationLimiter, validate({ params: objectIdParam
     } catch (err) {
       if (err?.code === 11000) throw ApiError.conflict('This message was already sent.', 'DUPLICATE_REQUEST');
       throw err;
+    }
+    // The first question of a conversation is a "topic explored" on the timeline.
+    if (conversation.messageCount === 0) {
+      logActivity(req.user._id, 'conversation_started', { conversation: conversation._id, title: content.slice(0, 140), meta: { mode } });
     }
     await runGeneration({ req, res, provider, conversation, userMessage, mode, user: req.user, isNewTurn: true });
   } finally {

@@ -36,6 +36,8 @@ const userSchema = new mongoose.Schema(
     onboardingCompleted: { type: Boolean, default: false },
     passwordChangedAt: { type: Date },
     lastLoginAt: { type: Date },
+    /** Set once existing data has been converted into timeline events (Phase 4). */
+    timelineBackfilledAt: { type: Date, default: null },
   },
   { timestamps: true }
 );

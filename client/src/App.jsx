@@ -17,6 +17,9 @@ const VaultPage = lazy(() => import('./pages/vault/VaultPage.jsx'));
 const ResourcePage = lazy(() => import('./pages/vault/ResourcePage.jsx'));
 const CollectionsPage = lazy(() => import('./pages/CollectionsPage.jsx'));
 const AssistantPage = lazy(() => import('./pages/assistant/AssistantPage.jsx'));
+const SearchPage = lazy(() => import('./pages/SearchPage.jsx'));
+const GraphPage = lazy(() => import('./pages/graph/GraphPage.jsx'));
+const TimelinePage = lazy(() => import('./pages/TimelinePage.jsx'));
 
 const page = (el) => (
   <Suspense
@@ -58,6 +61,9 @@ export default function App() {
           <Route path="/vault/:id" element={page(<ResourcePage />)} />
           <Route path="/collections" element={page(<CollectionsPage />)} />
           <Route path="/assistant/:id?" element={page(<AssistantPage />)} />
+          <Route path="/search" element={page(<SearchPage />)} />
+          <Route path="/graph" element={page(<GraphPage />)} />
+          <Route path="/timeline" element={page(<TimelinePage />)} />
         </Route>
       </Route>
 

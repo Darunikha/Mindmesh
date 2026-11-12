@@ -20,15 +20,15 @@ export const NAV_SECTIONS = [
     items: [
       { to: '/vault', label: 'Knowledge Vault', icon: LibraryBig, tint: 'accent-3' },
       { to: '/collections', label: 'Collections', icon: FolderTree, tint: 'accent' },
-      { to: '/search', label: 'Smart Search', icon: Search, phase: 4, tint: 'accent-2' },
+      { to: '/search', label: 'Smart Search', icon: Search, tint: 'accent-2' },
     ],
   },
   {
     id: 'discover',
     titles: { library: 'The Archive', studio: 'Discover', lab: '03 / Analysis' },
     items: [
-      { to: '/graph', label: 'Knowledge Graph', icon: Waypoints, phase: 4, tint: 'accent-3' },
-      { to: '/timeline', label: 'Timeline', icon: History, phase: 4, tint: 'accent' },
+      { to: '/graph', label: 'Knowledge Graph', icon: Waypoints, tint: 'accent-3' },
+      { to: '/timeline', label: 'Timeline', icon: History, tint: 'accent' },
     ],
   },
 ];

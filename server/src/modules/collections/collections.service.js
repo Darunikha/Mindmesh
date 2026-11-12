@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 import Collection, { MAX_COLLECTION_DEPTH } from '../../models/Collection.js';
 import Resource from '../../models/Resource.js';
 import ApiError from '../../utils/ApiError.js';
+import { logActivity } from '../timeline/activity.js';
 
 export const serializeCollection = (c) => ({
   id: c._id.toString(),
@@ -96,6 +97,7 @@ export async function createCollection(userId, { name, description = '', color, 
   }
   await assertUniqueName(userId, parentId, name);
   const c = await Collection.create({ user: userId, name, nameLower: name.toLowerCase(), description, parent: parentId, ...(color ? { color } : {}) });
+  logActivity(userId, 'collection_created', { collectionRef: c._id, title: c.name });
   return { ...serializeCollection(c), count: 0 };
 }
 

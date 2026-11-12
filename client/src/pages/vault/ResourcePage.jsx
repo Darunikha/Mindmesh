@@ -6,6 +6,7 @@ import Dialog from '../../components/ui/Dialog.jsx';
 import Skeleton from '../../components/ui/Skeleton.jsx';
 import EmptyState from '../../components/ui/EmptyState.jsx';
 import DetailsPanel from '../../components/library/DetailsPanel.jsx';
+import RelatedPanel from '../../components/library/RelatedPanel.jsx';
 import { StatusBadge, TypeBadge } from '../../components/library/Badges.jsx';
 import { libraryApi } from '../../api/library.js';
 import { useLibrary } from '../../context/LibraryContext.jsx';
@@ -196,7 +197,8 @@ export default function ResourcePage() {
           {resource.type === 'document' && <DocumentView resource={resource} />}
           {resource.type === 'link' && <LinkView resource={resource} />}
         </div>
-        <aside aria-label="Item details">
+        <aside aria-label="Item details" className="space-y-4">
+          <RelatedPanel resourceId={resource.id} />
           <DetailsPanel resource={resource} onChange={(u) => setResource((prev) => ({ ...u, note: u.note ? { ...u.note, content: prev.note?.content ?? u.note.content } : undefined }))} />
         </aside>
       </div>

@@ -110,6 +110,7 @@ export const http = {
   get: (p, o) => api(p, { ...o, method: 'GET' }),
   post: (p, body, o) => api(p, { ...o, method: 'POST', body }),
   patch: (p, body, o) => api(p, { ...o, method: 'PATCH', body }),
+  put: (p, body, o) => api(p, { ...o, method: 'PUT', body }),
   del: (p, body, o) => api(p, { ...o, method: 'DELETE', body }),
 };
 

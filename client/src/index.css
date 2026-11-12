@@ -599,3 +599,56 @@
 @keyframes mm-blink { to { visibility: hidden; } }
 .mm-highlight-flash { animation: mm-flash 1.6s ease; }
 @keyframes mm-flash { 0%, 40% { box-shadow: 0 0 0 3px var(--mm-accent); } 100% { box-shadow: var(--mm-sh-card); } }
+
+/* ── Search highlights ─────────────────────────────────────────────────── */
+.mm-mark { background: var(--mm-accent-soft); color: var(--mm-ink); border-radius: 3px; padding: 0 0.12em; font-weight: 600; }
+[data-theme='library'] .mm-mark { background: linear-gradient(transparent 55%, var(--mm-accent-3-soft) 55%); font-weight: 600; padding: 0; }
+[data-theme='studio'] .mm-mark { background: var(--mm-butter-soft); border-radius: 4px; }
+[data-theme='lab'] .mm-mark { background: transparent; color: var(--mm-accent); box-shadow: inset 0 -1px 0 var(--mm-accent); border-radius: 0; }
+
+/* ── Knowledge graph (React Flow) ──────────────────────────────────────── */
+.mm-graph .react-flow {
+  --xy-background-color: transparent;
+  --xy-edge-stroke: var(--mm-line-strong);
+  --xy-edge-stroke-selected: var(--mm-accent);
+  --xy-connectionline-stroke: var(--mm-accent);
+  --xy-handle-background-color: var(--mm-accent);
+  --xy-handle-border-color: var(--mm-surface);
+  --xy-minimap-background-color: var(--mm-surface);
+  --xy-minimap-mask-background-color: color-mix(in srgb, var(--mm-bg) 70%, transparent);
+  --xy-minimap-node-background-color: var(--mm-line-strong);
+  --xy-controls-button-background-color: var(--mm-surface);
+  --xy-controls-button-background-color-hover: var(--mm-sunken);
+  --xy-controls-button-color: var(--mm-ink-muted);
+  --xy-controls-button-border-color: var(--mm-line);
+  --xy-selection-background-color: var(--mm-accent-soft);
+  --xy-selection-border-color: var(--mm-accent);
+  --xy-attribution-background-color: transparent;
+  font-family: var(--mm-font-ui);
+}
+.mm-graph .react-flow__controls { box-shadow: var(--mm-sh-card); border-radius: var(--mm-r-control); overflow: hidden; }
+.mm-graph .react-flow__minimap { border-radius: var(--mm-r-card); box-shadow: var(--mm-sh-card); border: 1px solid var(--mm-line); }
+.mm-graph .react-flow__edge-textbg { fill: var(--mm-surface); }
+.mm-graph .react-flow__edge-text { fill: var(--mm-ink-muted); font-size: 10px; }
+.mm-graph .react-flow__handle { width: 8px; height: 8px; opacity: 0; transition: opacity 0.15s; }
+.mm-graph .react-flow__node:hover .react-flow__handle,
+.mm-graph .react-flow__node.selected .react-flow__handle { opacity: 1; }
+
+.mm-gnode { transition: opacity 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease; }
+.mm-gnode.is-dim { opacity: 0.18; }
+.mm-gnode.is-match { box-shadow: 0 0 0 3px var(--mm-accent-3); }
+
+/* Library: catalogue cards and wax-seal topics */
+[data-theme='library'] .mm-gnode-resource { background: var(--mm-texture), var(--mm-surface); border: 1px solid var(--mm-line-strong); border-radius: 3px; box-shadow: 2px 2px 0 var(--mm-line); font-family: var(--mm-font-display); }
+[data-theme='library'] .mm-gnode-topic { background: var(--mm-accent); color: var(--mm-accent-ink); border-radius: 999px; font-family: var(--mm-font-display); font-style: italic; }
+[data-theme='library'] .mm-gnode-collection { background: var(--mm-accent-2-soft); border: 1px double var(--mm-accent-2); border-width: 3px; border-radius: 4px; font-family: var(--mm-font-display); }
+/* Studio: soft pills with colour blocks */
+[data-theme='studio'] .mm-gnode-resource { background: var(--mm-surface); border-radius: 16px; box-shadow: var(--mm-sh-card); }
+[data-theme='studio'] .mm-gnode-topic { background: var(--mm-butter-soft); border: 2px solid var(--mm-butter); border-radius: 999px; font-weight: 700; }
+[data-theme='studio'] .mm-gnode-collection { background: var(--mm-accent-soft); border-radius: 20px; font-weight: 700; color: var(--mm-accent); }
+/* Lab: luminous instrument nodes */
+[data-theme='lab'] .mm-gnode-resource { background: color-mix(in srgb, var(--mm-surface) 88%, transparent); border: 1px solid var(--mm-line-strong); border-radius: 6px; font-family: var(--mm-font-mono); }
+[data-theme='lab'] .mm-gnode-resource.selected-node { box-shadow: 0 0 0 1px var(--mm-accent), 0 0 18px -4px var(--mm-accent); }
+[data-theme='lab'] .mm-gnode-topic { background: var(--mm-accent-2-soft); border: 1px solid var(--mm-accent-2); color: var(--mm-accent-2); border-radius: 999px; font-family: var(--mm-font-mono); }
+[data-theme='lab'] .mm-gnode-collection { background: var(--mm-accent-3-soft); border: 1px dashed var(--mm-accent-3); color: var(--mm-accent-3); border-radius: 4px; font-family: var(--mm-font-mono); text-transform: uppercase; letter-spacing: 0.08em; }
+.mm-gnode.selected-node { box-shadow: 0 0 0 2px var(--mm-accent); }

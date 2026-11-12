@@ -60,6 +60,10 @@ const schema = z.object({
   VECTOR_INDEX_NAME: z.string().default('chunk_embedding_index'),
   RAG_TOP_K: z.coerce.number().int().min(1).max(20).default(8),
   RAG_MIN_SCORE: z.coerce.number().min(0).max(1).default(0.3),
+
+  // Phase 4: relationship suggestions (minimum similarity per method)
+  GRAPH_SUGGEST_MIN_EMBEDDING: z.coerce.number().min(0).max(1).default(0.6),
+  GRAPH_SUGGEST_MIN_KEYWORD: z.coerce.number().min(0).max(1).default(0.12),
 });
 
 const parsed = schema.safeParse(process.env);

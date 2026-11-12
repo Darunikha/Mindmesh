@@ -3,6 +3,10 @@ import Resource from '../../models/Resource.js';
 import Chunk from '../../models/Chunk.js';
 import Tag from '../../models/Tag.js';
 import Collection from '../../models/Collection.js';
+import Connection from '../../models/Connection.js';
+import Activity from '../../models/Activity.js';
+import SearchHistory from '../../models/SearchHistory.js';
+import GraphLayout from '../../models/GraphLayout.js';
 import ApiError from '../../utils/ApiError.js';
 import { escapeRegex } from '../../utils/validators.js';
 import { FILE_TYPES, titleFromFilename } from '../../processing/fileTypes.js';
@@ -11,6 +15,9 @@ import { EMPTY_DOC, NoteContentError, countWords, docToSegments, sanitizeDoc } f
 import { FetchError, validatePublicUrl } from '../../processing/linkFetcher.js';
 import { enqueue, indexNote } from '../../processing/processor.js';
 import { assertCollectionOwned } from '../collections/collections.service.js';
+import { logActivity } from '../timeline/activity.js';
+
+const OPEN_LOG_INTERVAL_MS = 30 * 60 * 1000;
 import { resolveTagNames, serializeTag } from '../tags/tags.service.js';
 
 const oid = (v) => new mongoose.Types.ObjectId(String(v));
@@ -221,15 +228,20 @@ export async function overview(userId) {
 
 /** Fetches one item and records the access (drives "recently accessed"). */
 export async function getResource(userId, id, { touch = true } = {}) {
+  const now = new Date();
   const r = await Resource.findOneAndUpdate(
     { _id: id, user: userId },
-    touch ? { $set: { lastAccessedAt: new Date() } } : {},
-    { returnDocument: 'after', timestamps: false }
+    touch ? { $set: { lastAccessedAt: now } } : {},
+    { returnDocument: 'before', timestamps: false }
   )
     .populate(TAG_POPULATE)
     .lean();
   if (!r) throw ApiError.notFound('This item does not exist or you do not have access to it');
-  return serializeResource(r, { withContent: true });
+  // Log "opened" on the timeline at most once per 30 minutes per item.
+  if (touch && (!r.lastAccessedAt || now - new Date(r.lastAccessedAt) > OPEN_LOG_INTERVAL_MS)) {
+    logActivity(userId, 'resource_opened', { resource: r._id, title: r.title, meta: { resourceType: r.type } });
+  }
+  return serializeResource(touch ? { ...r, lastAccessedAt: now } : r, { withContent: true });
 }
 
 export async function getChunks(userId, id, { page, limit }) {
@@ -285,6 +297,7 @@ export async function createNote(userId, body) {
     processing: { status: 'ready' },
   });
   await indexNote(r);
+  logActivity(userId, 'note_created', { resource: r._id, title: r.title, meta: { resourceType: 'note' } });
   return hydrate(r._id, { withContent: true });
 }
 
@@ -345,6 +358,7 @@ export async function createDocument(userId, upload, fields) {
       processing: { status: 'pending' },
     });
     enqueue(r._id);
+    logActivity(userId, 'document_uploaded', { resource: r._id, title: r.title, meta: { resourceType: 'document', extension: upload.extension } });
     return hydrate(r._id);
   } catch (err) {
     if (storageKey) await removeFile(storageKey);
@@ -375,6 +389,7 @@ export async function createLink(userId, body) {
     processing: { status: 'pending' },
   });
   enqueue(r._id);
+  logActivity(userId, 'link_saved', { resource: r._id, title: r.title, meta: { resourceType: 'link', domain: r.link.domain } });
   return hydrate(r._id);
 }
 
@@ -391,6 +406,7 @@ export async function deleteResource(userId, id) {
   const r = await Resource.findOneAndDelete({ _id: id, user: userId });
   if (!r) throw ApiError.notFound('This item does not exist or you do not have access to it');
   await Chunk.deleteMany({ resource: r._id });
+  await Connection.deleteMany({ user: userId, $or: [{ a: r._id }, { b: r._id }] });
   if (r.file?.storageKey) await removeFile(r.file.storageKey);
 }
 
@@ -436,6 +452,10 @@ export async function deleteAllForUser(userId) {
     Chunk.deleteMany({ user: userId }),
     Collection.deleteMany({ user: userId }),
     Tag.deleteMany({ user: userId }),
+    Connection.deleteMany({ user: userId }),
+    Activity.deleteMany({ user: userId }),
+    SearchHistory.deleteMany({ user: userId }),
+    GraphLayout.deleteMany({ user: userId }),
   ]);
   await removeUserFiles(userId);
 }

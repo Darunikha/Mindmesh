@@ -28,7 +28,7 @@ function dot(a, b) {
   return s;
 }
 
-async function atlasSearch(userId, vector, model, limit) {
+async function atlasSearch(userId, vector, model, limit, resourceIds) {
   return Chunk.aggregate([
     {
       $vectorSearch: {
@@ -37,15 +37,19 @@ async function atlasSearch(userId, vector, model, limit) {
         queryVector: vector,
         numCandidates: Math.max(100, limit * 15),
         limit,
-        filter: { user: new mongoose.Types.ObjectId(String(userId)), embeddingModel: model },
+        filter: {
+          user: new mongoose.Types.ObjectId(String(userId)),
+          embeddingModel: model,
+          ...(resourceIds ? { resource: { $in: resourceIds.map((id) => new mongoose.Types.ObjectId(String(id))) } } : {}),
+        },
       },
     },
     { $project: { resource: 1, index: 1, text: 1, page: 1, pageEnd: 1, heading: 1, resourceType: 1, score: { $meta: 'vectorSearchScore' } } },
   ]);
 }
 
-async function localSearch(userId, vector, model, limit) {
-  const rows = await Chunk.find({ user: userId, embeddingModel: model }, { resource: 1, embedding: 1 }).select('+embedding').limit(LOCAL_SCAN_LIMIT).lean();
+async function localSearch(userId, vector, model, limit, resourceIds) {
+  const rows = await Chunk.find({ user: userId, embeddingModel: model, ...(resourceIds ? { resource: { $in: resourceIds } } : {}) }, { resource: 1, embedding: 1 }).select('+embedding').limit(LOCAL_SCAN_LIMIT).lean();
   const scored = [];
   for (const r of rows) {
     if (!r.embedding || r.embedding.length !== vector.length) continue;
@@ -62,16 +66,16 @@ async function localSearch(userId, vector, model, limit) {
  * Returns [{ _id, resource, text, page, heading, score }] (score: cosine similarity, 0–1 for
  * Atlas cosine indexes - Atlas reports (1 + cos) / 2, which is normalised back here).
  */
-export async function vectorSearch(userId, vector, model, { limit = 20 } = {}) {
+export async function vectorSearch(userId, vector, model, { limit = 20, resourceIds = null } = {}) {
   if (atlasState !== 'unavailable') {
     try {
-      const hits = await atlasSearch(userId, vector, model, limit);
+      const hits = await atlasSearch(userId, vector, model, limit, resourceIds);
       if (hits.length || env.VECTOR_SEARCH === 'atlas') {
         atlasState = 'available';
         return { strategy: 'atlas', hits: hits.map((h) => ({ ...h, score: h.score * 2 - 1 })) };
       }
       // Zero hits can mean the index doesn't exist yet: confirm with an exact local search.
-      const local = await localSearch(userId, vector, model, limit);
+      const local = await localSearch(userId, vector, model, limit, resourceIds);
       if (local.length) return { strategy: 'local', hits: local };
       return { strategy: 'atlas', hits: [] };
     } catch (err) {
@@ -79,7 +83,7 @@ export async function vectorSearch(userId, vector, model, { limit = 20 } = {}) {
       atlasState = 'unavailable';
     }
   }
-  return { strategy: 'local', hits: await localSearch(userId, vector, model, limit) };
+  return { strategy: 'local', hits: await localSearch(userId, vector, model, limit, resourceIds) };
 }
 
 /** Atlas Vector Search index definition for the chunks collection. */
@@ -92,6 +96,7 @@ export function atlasIndexDefinition(dimensions) {
         { type: 'vector', path: 'embedding', numDimensions: dimensions, similarity: 'cosine' },
         { type: 'filter', path: 'user' },
         { type: 'filter', path: 'embeddingModel' },
+        { type: 'filter', path: 'resource' },
       ],
     },
   };

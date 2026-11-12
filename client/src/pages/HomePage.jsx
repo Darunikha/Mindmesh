@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowRight, Check, Compass, FileText, Link2, MessageSquareText, Palette, Plus, Sparkles, Upload } from 'lucide-react';
 import { libraryApi } from '../api/library.js';
+import { searchApi } from '../api/discovery.js';
 import { useToast } from '../context/ToastContext.jsx';
 import { TypeBadge } from '../components/library/Badges.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
@@ -102,6 +103,7 @@ export default function HomePage() {
   const [sessions, setSessions] = useState(null);
   const [sessionsError, setSessionsError] = useState(null);
   const [overview, setOverview] = useState(null);
+  const [recentSearches, setRecentSearches] = useState(null);
   const [overviewError, setOverviewError] = useState(null);
   const [creating, setCreating] = useState(false);
   const navigate = useNavigate();
@@ -113,6 +115,10 @@ export default function HomePage() {
       .sessions()
       .then((d) => alive && setSessions(d.sessions))
       .catch((e) => alive && setSessionsError(e.message));
+    searchApi
+      .recent()
+      .then((d) => alive && setRecentSearches(d.searches))
+      .catch(() => alive && setRecentSearches([]));
     libraryApi
       .overview()
       .then((d) => alive && setOverview(d))
@@ -319,7 +325,25 @@ export default function HomePage() {
             ) : (
               <p className="mt-4 font-ui text-sm text-ink-muted">No topics yet. Add some to personalise suggestions.</p>
             )}
-            <p className="mt-4 font-ui text-xs text-ink-faint">Suggestions drawn from your saved knowledge arrive with Smart Search (Phase 4).</p>
+            <p className="mm-eyebrow mt-5 mb-2">Recent searches</p>
+            {recentSearches === null ? (
+              <Skeleton lines={2} />
+            ) : recentSearches.length ? (
+              <div className="flex flex-wrap gap-1.5">
+                {recentSearches.slice(0, 5).map((s) => (
+                  <Link key={s.id} to={`/search?q=${encodeURIComponent(s.query)}`} className="mm-chip">
+                    {s.query}
+                  </Link>
+                ))}
+              </div>
+            ) : (
+              <p className="font-ui text-xs text-ink-faint">
+                Nothing yet.{' '}
+                <Link to="/search" className="text-accent hover:underline">
+                  Search your knowledge
+                </Link>
+              </p>
+            )}
           </Card>
         </motion.div>
 

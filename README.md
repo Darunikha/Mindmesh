@@ -2,14 +2,14 @@
 
 An AI-powered personal knowledge and learning workspace: a general-purpose AI assistant, a personal knowledge vault, semantic search, document analysis and an interactive knowledge graph, in three distinct visual themes.
 
-> **Status: Phase 3 (AI assistant + RAG) complete.** Authentication, the three themes, the Knowledge Vault with document processing, and an AI assistant with **General AI** and **My Knowledge** (retrieval-augmented, cited) modes are working end to end. Phase 4 modules appear in the navigation as disabled items marked `P4`. They are never linked to empty or fake pages. **The assistant needs an API key** (see [AI setup](#ai-setup-phase-3)). Without one, it shows a setup message and never fabricates answers.
+> **Status: Phase 4 (Intelligent discovery) complete.** All modules are live: authentication and the three themes, the Knowledge Vault, the AI assistant (General AI and cited My Knowledge modes), Smart Search (keyword and semantic), the interactive Knowledge Graph with reviewed AI suggestions, and the Knowledge Timeline. **The assistant needs an API key**, and semantic features work best with an embedding key (see [AI setup](#ai-setup-phase-3)). Without keys, Mindmesh says so and falls back to keyword methods. It never fabricates results.
 
 | Phase | Scope | Status |
 | --- | --- | --- |
 | 1. Foundation | Monorepo, Express API, MongoDB, JWT auth with rotating refresh tokens, onboarding, three themes, shared UI, navigation, home, settings | ✅ Done |
 | 2. Knowledge management | Vault, rich-text notes, collections, tags, uploads, text extraction, chunking, saved links, keyword search | ✅ Done |
 | 3. AI assistant | Streaming chat, conversations, provider adapters, embeddings, vector search, General AI / My Knowledge modes, RAG with citations | ✅ Done |
-| 4. Discovery | Semantic search page, knowledge graph (React Flow), AI-suggested links, timeline | ⏳ Next |
+| 4. Discovery | Smart Search (keyword + semantic), Knowledge Graph (React Flow), reviewed AI relationship suggestions, Knowledge Timeline | ✅ Done |
 | 5. Refinement | Performance, accessibility audit, security review, wider test coverage | — |
 
 ---
@@ -237,7 +237,9 @@ See [`server/.env.example`](server/.env.example) for the annotated file.
 | `VECTOR_SEARCH` | | `auto` | `auto`, `atlas` or `local` |
 | `VECTOR_INDEX_NAME` | | `chunk_embedding_index` | Atlas Vector Search index name |
 | `RAG_TOP_K` | | `8` | Passages given to the model per question |
-| `RAG_MIN_SCORE` | | `0.3` | Minimum cosine similarity for a semantic-only match |
+| `RAG_MIN_SCORE` | | `0.3` | Minimum cosine similarity for a semantic-only match (assistant and Smart Search) |
+| `GRAPH_SUGGEST_MIN_EMBEDDING` | | `0.6` | Minimum embedding similarity before two items are suggested as related |
+| `GRAPH_SUGGEST_MIN_KEYWORD` | | `0.12` | Minimum TF-IDF similarity for suggestions when no embedding provider is set |
 
 The server validates these at boot and exits with a clear message if any are missing or invalid.
 
@@ -382,6 +384,117 @@ No API keys are ever sent to or bundled into the frontend.
 - The processing queue is **in-process**. It survives restarts (jobs are re-queued from the database) but isn't shared across multiple server instances.
 - Pages that need JavaScript to render their content may yield little text, and those that block bots are saved as bookmarks only.
 - Files are stored on **local disk**. Move `processing/storage.js` to S3/GCS for multi-server or serverless hosting.
+
+## Discovery architecture (Phase 4)
+
+### Smart Search (`server/src/modules/search/`)
+
+`GET /api/search` takes `q`, `mode` (`smart` | `keyword` | `semantic`), `type`, `collection`, `tags`, `from`, `to`, `sort` (`relevance` | `newest` | `oldest`), `page`, `limit` and `record`.
+
+**How it ranks:**
+- Filters are applied first, as an allowed set of item ids, so filtered searches are complete and vector search only scans permitted items.
+- Up to four ranked lists are built:
+  - title substring matches
+  - the title/description text index
+  - full-text matches inside every passage
+  - semantic nearest neighbours (Phase 3 embeddings, Atlas or in-process)
+- The lists are fused at the **item** level with weighted Reciprocal Rank Fusion, so every item appears **once**.
+- Semantic-only matches must clear `RAG_MIN_SCORE`.
+
+**What each result returns:**
+- a match type: *Title*, *Exact words* or *Related meaning*
+- up to two passages, with page and section
+- highlight **character ranges**, computed server-side with light stemming and rendered as `<mark>` without injecting HTML
+
+**Recent searches and suggestions:**
+- **Recent searches** are stored per user, one row per distinct query, capped at 50. They are recorded on Enter, on picking a suggestion, or after the user pauses on a query.
+- **Type-ahead suggestions** combine matching titles, tags, collections and past searches.
+
+Without an embedding provider, Smart mode runs keyword-only and the response says so.
+
+### Knowledge Graph (`server/src/modules/graph/`, `client/src/pages/graph/`)
+
+**Nodes:** notes, documents and links; **topics** (tags); and **collections**, including their ancestors.
+
+**Edges:**
+- item → topic
+- collection → item
+- collection → sub-collection
+- **connections**
+
+**Connections:**
+- A connection is an undirected `Connection` record with one row per pair.
+- It is `manual`, or `ai` once a suggestion is accepted.
+- Ownership of both ends is checked, and deleting an item removes its connections.
+
+**Interactions:** zoom and pan, drag (positions persist per user in `GraphLayout`), select, double-click to open, search nodes, and filter by type, topic, collection, and whether topics and collections are shown.
+
+**Exploring:** neighbour focus mode, a side panel listing connected items, topics and "related by content", drag-to-connect between items, and editable and removable connection labels.
+
+**Layout:** d3-force runs on the client, and nodes the user placed stay fixed.
+
+The graph shows up to 400 items, pinned and recently opened first, and notes when it is truncated.
+
+**AI-assisted relationship suggestions** (`POST /api/graph/suggestions/generate`):
+1. Score every pair of the user's items, using embedding centroids (cosine) or TF-IDF (keyword fallback).
+2. Keep each item's **top 2 neighbours** above a similarity floor.
+3. Skip any pair that was ever connected, suggested, dismissed or removed.
+4. If a chat provider is configured, Claude reviews the batch with structured output. It drops pairs that aren't genuinely related and writes a short label and reason.
+5. Store **at most 8** per run as `suggested`.
+
+Nothing enters the graph until the user **accepts** it, and dismissed or removed pairs are never proposed again. This keeps the graph from filling up with meaningless links.
+
+### Knowledge Timeline (`server/src/modules/timeline/`)
+
+**What's recorded:** an append-only `Activity` log, written by the existing services, of:
+- notes written, documents uploaded and links saved
+- collections created and connections made
+- topics searched (once per query per day)
+- questions asked (each new conversation's first question)
+- items revisited (at most once per item per 30 minutes)
+
+**Backfill:** the first time a user opens the timeline, history is rebuilt from their existing items, collections, conversations and connections. Anything already logged is skipped, so nothing is duplicated.
+
+**API:**
+- `GET /api/timeline` filters by `types`, `from` and `to`, and pages with a time cursor (`before`).
+- `GET /api/timeline/summary` returns per-day counts in the viewer's IANA time zone, for the 12-week heat map.
+- Events for items that were deleted later are kept and marked as deleted, never linked.
+
+### Discovery API
+
+| Method | Path | Description |
+| --- | --- | --- |
+| GET | `/search` 🔒 | Unified search (see above) |
+| GET | `/search/suggest?q=` 🔒 | Type-ahead suggestions |
+| GET / DELETE | `/search/recent` 🔒 | Recent searches / clear all |
+| DELETE | `/search/recent/:id` 🔒 | Remove one recent search |
+| GET | `/graph` 🔒 | Nodes and edges: `types`, `collection`, `tag`, `showTopics`, `showCollections` |
+| POST / PATCH / DELETE | `/graph/connections[/:id]` 🔒 | Create `{ sourceId, targetId, label? }`, relabel, remove |
+| GET | `/graph/suggestions` 🔒 | Pending suggestions |
+| POST | `/graph/suggestions/generate` 🔒 | Find new suggestions (rate-limited) |
+| POST | `/graph/suggestions/:id/accept` / `dismiss` 🔒 | Review a suggestion |
+| GET | `/graph/related/:resourceId` 🔒 | Connected and content-similar items |
+| PUT / DELETE | `/graph/layout` 🔒 | Save dragged positions / reset layout |
+| GET | `/timeline` 🔒 | Activity feed |
+| GET | `/timeline/summary` 🔒 | Daily counts by type (`days`, `tz`) |
+
+## Phase 4 checklist
+
+- [x] Smart Search page: prominent input, type-ahead suggestions, recent searches, filters (type, collection, tags, date presets and custom range), sort (relevance, newest, oldest), keyword / meaning / smart modes, result previews with highlights, type indicators, tags, links to the original
+- [x] Semantic search on the Phase 3 embeddings, fused with keyword retrieval; one result per item; per-user scoping on every list
+- [x] Interactive Knowledge Graph (React Flow): notes, documents, links, topics and collections; zoom, pan, drag with saved layout, select, open, search nodes, filter by type, topic and collection; neighbour focus; related items; manual connections with labels
+- [x] AI-assisted relationship suggestions with review (accept / dismiss), a similarity floor, a per-item cap, AI confirmation when available, and no repeats
+- [x] Distinct graph styling per theme (catalogue cards / pastel pills / instrument nodes)
+- [x] Knowledge Timeline: notes, documents, links, collections, connections, topics searched, questions asked, items revisited; filters by type and date; 12-week heat map; backfill of earlier history
+- [x] "Related" panel on every item page; recent searches on Home
+- [x] 11 new API tests (62 total)
+
+### Known limitations (Phase 4)
+
+- **Not exercised against live embedding or Claude APIs in this environment.** The semantic search ranking and AI review of suggestions are covered by test doubles; with real keys, thresholds such as `GRAPH_SUGGEST_MIN_EMBEDDING` may need tuning for your embedding model.
+- The graph renders up to 400 items at once, with no clustering for very large libraries.
+- Similarity for suggestions and related items is computed in-process per request, which is fine for personal libraries (hundreds of items) but not for very large ones.
+- Searching inside chat conversations isn't part of Smart Search yet.
 
 ## Phase 3 checklist
 
