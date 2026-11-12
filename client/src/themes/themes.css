@@ -1,0 +1,152 @@
+/* ──────────────────────────────────────────────────────────────────────────
+   Mindmesh design tokens
+   Every component reads from these variables; a theme is a complete set of
+   values plus a handful of component personalities further below.
+   Switching themes only flips <html data-theme>, so no state is lost.
+   ────────────────────────────────────────────────────────────────────────── */
+
+:root,
+[data-theme='library'] {
+  color-scheme: light;
+  /* Surfaces: warm paper on a cream reading-room wall */
+  --mm-bg: #f3ebdd;
+  --mm-bg-elev: #ece1cf;
+  --mm-surface: #fbf6ec;
+  --mm-surface-2: #f6eedf;
+  --mm-sunken: #ebdfca;
+  --mm-ink: #2a1f17;
+  --mm-ink-muted: #6a5646;
+  --mm-ink-faint: #9a8573;
+  --mm-line: #e0d1ba;
+  --mm-line-strong: #c9b496;
+  /* Oxblood leather, sage cloth, brass fittings */
+  --mm-accent: #8b3f24;
+  --mm-accent-hover: #74331c;
+  --mm-accent-ink: #fbf6ec;
+  --mm-accent-soft: #f1dccb;
+  --mm-accent-2: #5d6b48;
+  --mm-accent-2-soft: #e3e6d2;
+  --mm-accent-3: #a97b2f;
+  --mm-accent-3-soft: #f1e3c4;
+  --mm-danger: #a12f2f;
+  --mm-danger-soft: #f6dcd6;
+  --mm-success: #4f6b3a;
+  --mm-success-soft: #e1e9d3;
+  --mm-focus: #a97b2f;
+
+  --mm-font-display: 'Cormorant Garamond', 'Iowan Old Style', Georgia, serif;
+  --mm-font-body: 'Source Serif 4', 'Iowan Old Style', Georgia, serif;
+  --mm-font-ui: 'Source Serif 4', Georgia, serif;
+  --mm-font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+  --mm-display-weight: 600;
+  --mm-display-tracking: -0.01em;
+
+  --mm-r-control: 4px;
+  --mm-r-card: 6px;
+  --mm-r-panel: 10px;
+  --mm-r-pill: 4px;
+  --mm-sidebar-offset: 264px;
+
+  --mm-sh-card: 0 1px 0 rgba(84, 56, 30, 0.06), 0 6px 18px -10px rgba(84, 56, 30, 0.35);
+  --mm-sh-raised: 0 2px 0 rgba(84, 56, 30, 0.05), 0 18px 40px -18px rgba(84, 56, 30, 0.45);
+  --mm-sh-focus: 0 0 0 3px rgba(169, 123, 47, 0.35);
+
+  /* Paper grain: fractal noise, tinted cocoa, very low opacity */
+  --mm-texture: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .32 0 0 0 0 .22 0 0 0 0 .12 0 0 0 .09 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+[data-theme='studio'] {
+  color-scheme: light;
+  /* Gallery-white walls, chalky pastels */
+  --mm-bg: #f6f4f0;
+  --mm-bg-elev: #ffffff;
+  --mm-surface: #ffffff;
+  --mm-surface-2: #faf8f5;
+  --mm-sunken: #efece7;
+  --mm-ink: #1d1b26;
+  --mm-ink-muted: #625f70;
+  --mm-ink-faint: #9894a6;
+  --mm-line: #e9e5ee;
+  --mm-line-strong: #d6d0de;
+  --mm-accent: #5b4bdb;
+  --mm-accent-hover: #4a3bc6;
+  --mm-accent-ink: #ffffff;
+  --mm-accent-soft: #ebe8ff;
+  --mm-accent-2: #e8775a;
+  --mm-accent-2-soft: #ffe7de;
+  --mm-accent-3: #2f9d78;
+  --mm-accent-3-soft: #d9f3e8;
+  --mm-butter: #f4c95d;
+  --mm-butter-soft: #fff3cf;
+  --mm-danger: #d0414b;
+  --mm-danger-soft: #fde3e4;
+  --mm-success: #2f9d78;
+  --mm-success-soft: #d9f3e8;
+  --mm-focus: #5b4bdb;
+
+  --mm-font-display: 'Bricolage Grotesque', 'Segoe UI', system-ui, sans-serif;
+  --mm-font-body: 'DM Sans', 'Segoe UI', system-ui, sans-serif;
+  --mm-font-ui: 'DM Sans', 'Segoe UI', system-ui, sans-serif;
+  --mm-font-mono: 'DM Mono', ui-monospace, monospace;
+  --mm-display-weight: 700;
+  --mm-display-tracking: -0.03em;
+
+  --mm-r-control: 12px;
+  --mm-r-card: 20px;
+  --mm-r-panel: 28px;
+  --mm-r-pill: 999px;
+  --mm-sidebar-offset: 276px;
+
+  --mm-sh-card: 0 1px 2px rgba(29, 27, 38, 0.04), 0 8px 24px -12px rgba(73, 60, 140, 0.18);
+  --mm-sh-raised: 0 2px 4px rgba(29, 27, 38, 0.04), 0 24px 48px -20px rgba(73, 60, 140, 0.28);
+  --mm-sh-focus: 0 0 0 4px rgba(91, 75, 219, 0.2);
+
+  --mm-texture: none;
+}
+
+[data-theme='lab'] {
+  color-scheme: dark;
+  /* Deep-sea navy instrument panel; luminous accents are used sparingly */
+  --mm-bg: #090e1b;
+  --mm-bg-elev: #0c1224;
+  --mm-surface: #10172b;
+  --mm-surface-2: #141c34;
+  --mm-sunken: #0a1020;
+  --mm-ink: #e4e9f4;
+  --mm-ink-muted: #95a1ba;
+  --mm-ink-faint: #5d6984;
+  --mm-line: #1d2742;
+  --mm-line-strong: #2b3858;
+  --mm-accent: #4fe0c8;
+  --mm-accent-hover: #7aeedb;
+  --mm-accent-ink: #04211c;
+  --mm-accent-soft: rgba(79, 224, 200, 0.12);
+  --mm-accent-2: #a08cff;
+  --mm-accent-2-soft: rgba(160, 140, 255, 0.14);
+  --mm-accent-3: #f6b950;
+  --mm-accent-3-soft: rgba(246, 185, 80, 0.13);
+  --mm-danger: #ff6b7a;
+  --mm-danger-soft: rgba(255, 107, 122, 0.13);
+  --mm-success: #4fe0c8;
+  --mm-success-soft: rgba(79, 224, 200, 0.12);
+  --mm-focus: #4fe0c8;
+
+  --mm-font-display: 'Space Grotesk', 'Segoe UI', system-ui, sans-serif;
+  --mm-font-body: 'IBM Plex Sans', 'Segoe UI', system-ui, sans-serif;
+  --mm-font-ui: 'IBM Plex Sans', 'Segoe UI', system-ui, sans-serif;
+  --mm-font-mono: 'JetBrains Mono', ui-monospace, monospace;
+  --mm-display-weight: 500;
+  --mm-display-tracking: -0.02em;
+
+  --mm-r-control: 6px;
+  --mm-r-card: 10px;
+  --mm-r-panel: 14px;
+  --mm-r-pill: 6px;
+  --mm-sidebar-offset: 240px;
+
+  --mm-sh-card: 0 1px 0 rgba(255, 255, 255, 0.03) inset, 0 12px 32px -18px rgba(0, 0, 0, 0.8);
+  --mm-sh-raised: 0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 24px 60px -24px rgba(0, 0, 0, 0.9);
+  --mm-sh-focus: 0 0 0 3px rgba(79, 224, 200, 0.28);
+
+  --mm-texture: none;
+}

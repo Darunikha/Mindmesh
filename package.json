@@ -1,0 +1,19 @@
+{
+  "name": "mindmesh",
+  "private": true,
+  "version": "0.1.0",
+  "description": "AI-powered personal knowledge and learning workspace",
+  "workspaces": [
+    "server",
+    "client"
+  ],
+  "scripts": {
+    "dev": "concurrently -n server,client -c magenta,cyan \"npm:dev -w server\" \"npm:dev -w client\"",
+    "build": "npm run build -w client",
+    "test": "npm test -w server",
+    "lint": "npm run lint -w client"
+  },
+  "devDependencies": {
+    "concurrently": "^10.0.7"
+  }
+}
