@@ -63,6 +63,15 @@ const resourceSchema = new mongoose.Schema(
       chunkCount: { type: Number, default: 0 },
       charCount: { type: Number, default: 0 },
     },
+
+    /** Semantic index state (Phase 3). 'disabled' means no embedding provider is configured. */
+    embedding: {
+      status: { type: String, enum: ['none', 'pending', 'processing', 'ready', 'failed', 'disabled'], default: 'none' },
+      model: { type: String, default: null },
+      error: { type: String, default: null },
+      embeddedChunks: { type: Number, default: 0 },
+      updatedAt: { type: Date, default: null },
+    },
   },
   { timestamps: true }
 );
@@ -76,6 +85,7 @@ resourceSchema.index({ user: 1, collectionId: 1, updatedAt: -1 });
 resourceSchema.index({ user: 1, tags: 1 });
 resourceSchema.index({ user: 1, pinned: 1, updatedAt: -1 });
 resourceSchema.index({ 'processing.status': 1 });
+resourceSchema.index({ 'embedding.status': 1 });
 resourceSchema.index(
   { title: 'text', excerpt: 'text', 'link.description': 'text', 'link.domain': 'text' },
   { weights: { title: 10, 'link.domain': 4, 'link.description': 3, excerpt: 2 }, name: 'resource_text' }

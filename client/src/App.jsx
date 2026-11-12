@@ -16,6 +16,7 @@ import Skeleton from './components/ui/Skeleton.jsx';
 const VaultPage = lazy(() => import('./pages/vault/VaultPage.jsx'));
 const ResourcePage = lazy(() => import('./pages/vault/ResourcePage.jsx'));
 const CollectionsPage = lazy(() => import('./pages/CollectionsPage.jsx'));
+const AssistantPage = lazy(() => import('./pages/assistant/AssistantPage.jsx'));
 
 const page = (el) => (
   <Suspense
@@ -56,6 +57,7 @@ export default function App() {
           <Route path="/vault" element={page(<VaultPage />)} />
           <Route path="/vault/:id" element={page(<ResourcePage />)} />
           <Route path="/collections" element={page(<CollectionsPage />)} />
+          <Route path="/assistant/:id?" element={page(<AssistantPage />)} />
         </Route>
       </Route>
 

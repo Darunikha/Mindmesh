@@ -9,8 +9,7 @@ import { FILE_TYPES, titleFromFilename } from '../../processing/fileTypes.js';
 import { moveIntoStorage, removeFile, removeUserFiles, openStream, fileExists } from '../../processing/storage.js';
 import { EMPTY_DOC, NoteContentError, countWords, docToSegments, sanitizeDoc } from '../../processing/noteContent.js';
 import { FetchError, validatePublicUrl } from '../../processing/linkFetcher.js';
-import { indexNote } from '../../processing/processor.js';
-import { enqueue } from '../../processing/queue.js';
+import { enqueue, indexNote } from '../../processing/processor.js';
 import { assertCollectionOwned } from '../collections/collections.service.js';
 import { resolveTagNames, serializeTag } from '../tags/tags.service.js';
 
@@ -38,6 +37,12 @@ export function serializeResource(r, { withContent = false } = {}) {
       chunkCount: r.processing?.chunkCount || 0,
       charCount: r.processing?.charCount || 0,
       completedAt: r.processing?.completedAt || null,
+    },
+    semanticIndex: {
+      status: r.embedding?.status || 'none',
+      model: r.embedding?.model || null,
+      error: r.embedding?.error || null,
+      embeddedChunks: r.embedding?.embeddedChunks || 0,
     },
   };
   if (r.type === 'note') {

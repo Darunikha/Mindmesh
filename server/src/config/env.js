@@ -34,6 +34,32 @@ const schema = z.object({
   LINK_MAX_BYTES: z.coerce.number().int().min(10000).default(3000000),
   // Allows fetching localhost/private addresses. Development/testing only.
   ALLOW_PRIVATE_LINK_FETCH: bool,
+
+  // Phase 3: AI assistant
+  AI_PROVIDER: z.string().default('anthropic'),
+  ANTHROPIC_API_KEY: z.string().optional(),
+  AI_MODEL: z.string().default('claude-opus-5-5'),
+  /** Model for small helper tasks (titles, follow-ups, summaries). Defaults to AI_MODEL. */
+  AI_UTILITY_MODEL: z.string().optional(),
+  AI_EFFORT: z.enum(['low', 'medium', 'high', 'xhigh', 'max']).default('medium'),
+  AI_MAX_OUTPUT_TOKENS: z.coerce.number().int().min(1024).max(128000).default(16000),
+  /** Server-side refusal fallbacks (Anthropic). Set to false to disable. */
+  AI_REFUSAL_FALLBACKS: z
+    .enum(['true', 'false'])
+    .default('true')
+    .transform((v) => v === 'true'),
+
+  EMBEDDING_PROVIDER: z.string().default('voyage'),
+  VOYAGE_API_KEY: z.string().optional(),
+  OPENAI_API_KEY: z.string().optional(),
+  EMBEDDING_MODEL: z.string().optional(),
+  EMBEDDING_DIMENSIONS: z.coerce.number().int().positive().optional(),
+
+  /** auto: Atlas $vectorSearch when available, otherwise in-process similarity. */
+  VECTOR_SEARCH: z.enum(['auto', 'atlas', 'local']).default('auto'),
+  VECTOR_INDEX_NAME: z.string().default('chunk_embedding_index'),
+  RAG_TOP_K: z.coerce.number().int().min(1).max(20).default(8),
+  RAG_MIN_SCORE: z.coerce.number().min(0).max(1).default(0.3),
 });
 
 const parsed = schema.safeParse(process.env);

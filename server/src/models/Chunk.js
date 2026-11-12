@@ -21,12 +21,21 @@ const chunkSchema = new mongoose.Schema(
     heading: { type: String, default: null, maxlength: 300 },
     charCount: { type: Number, required: true },
     tokenEstimate: { type: Number, required: true },
+    /** sha256 of the text; unchanged passages keep their embedding when content is re-chunked. */
+    textHash: { type: String, required: true },
+    /** Unit-length embedding vector (Phase 3). Excluded from normal reads. */
+    embedding: { type: [Number], default: undefined, select: false },
+    /** provider:model:dimensions that produced the embedding, e.g. voyage:voyage-3.5:1024 */
+    embeddingModel: { type: String, default: null },
+    embeddedAt: { type: Date, default: null },
   },
   { timestamps: true }
 );
 
 chunkSchema.index({ resource: 1, index: 1 }, { unique: true });
 chunkSchema.index({ user: 1, resource: 1 });
+chunkSchema.index({ user: 1, embeddingModel: 1 });
+chunkSchema.index({ resource: 1, embeddingModel: 1 });
 chunkSchema.index({ text: 'text', heading: 'text' }, { weights: { heading: 3, text: 1 }, name: 'chunk_text' });
 
 export default mongoose.model('Chunk', chunkSchema);

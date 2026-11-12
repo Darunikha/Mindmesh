@@ -170,3 +170,66 @@ export function uploadWithProgress(path, formData, { onProgress, signal } = {}) 
     throw err;
   });
 }
+
+/**
+ * POSTs JSON and consumes a text/event-stream response, calling onEvent(event, data) for each
+ * server-sent event. Non-2xx responses (sent as JSON before streaming starts) reject with
+ * ApiRequestError. Refreshes an expired access token once before the stream begins.
+ */
+export async function streamSse(path, body, { onEvent, signal } = {}) {
+  const attempt = () =>
+    fetch(`${BASE}${path}`, {
+      method: 'POST',
+      credentials: 'include',
+      signal,
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'text/event-stream',
+        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+      },
+      body: JSON.stringify(body),
+    });
+
+  let res;
+  try {
+    res = await attempt();
+    if (res.status === 401) {
+      const data = await parse(res);
+      if (data?.error?.code !== 'TOKEN_EXPIRED' && data?.error?.code !== 'UNAUTHORIZED') {
+        throw new ApiRequestError(401, data?.error?.message || 'Unauthorized', data?.error?.code);
+      }
+      await refreshSession();
+      res = await attempt();
+    }
+  } catch (err) {
+    if (err.name === 'AbortError' || err instanceof ApiRequestError) throw err;
+    throw new ApiRequestError(0, 'Could not reach the Mindmesh server. Check your connection and try again.', 'NETWORK');
+  }
+
+  if (!res.ok) {
+    const data = await parse(res);
+    const e = data?.error || {};
+    throw new ApiRequestError(res.status, e.message || `Request failed (${res.status})`, e.code || 'ERROR', e.details);
+  }
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  for (;;) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    let sep;
+    while ((sep = buffer.indexOf('\n\n')) !== -1) {
+      const block = buffer.slice(0, sep);
+      buffer = buffer.slice(sep + 2);
+      let event = 'message';
+      let data = '';
+      for (const line of block.split('\n')) {
+        if (line.startsWith('event:')) event = line.slice(6).trim();
+        else if (line.startsWith('data:')) data += line.slice(5).trim();
+      }
+      if (data) onEvent?.(event, JSON.parse(data));
+    }
+  }
+}

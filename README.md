@@ -2,14 +2,14 @@
 
 An AI-powered personal knowledge and learning workspace: a general-purpose AI assistant, a personal knowledge vault, semantic search, document analysis and an interactive knowledge graph, in three distinct visual themes.
 
-> **Status: Phase 2 (Knowledge management) complete.** On top of the Phase 1 foundation, the Knowledge Vault, rich-text notes with autosave, document uploads with background text extraction, saved links, collections, tags and full-text search are working end to end. Modules from later phases appear in the navigation as disabled items marked with their phase (`P3`, `P4`). They are never linked to empty or fake pages.
+> **Status: Phase 3 (AI assistant + RAG) complete.** Authentication, the three themes, the Knowledge Vault with document processing, and an AI assistant with **General AI** and **My Knowledge** (retrieval-augmented, cited) modes are working end to end. Phase 4 modules appear in the navigation as disabled items marked `P4`. They are never linked to empty or fake pages. **The assistant needs an API key** (see [AI setup](#ai-setup-phase-3)). Without one, it shows a setup message and never fabricates answers.
 
 | Phase | Scope | Status |
 | --- | --- | --- |
 | 1. Foundation | Monorepo, Express API, MongoDB, JWT auth with rotating refresh tokens, onboarding, three themes, shared UI, navigation, home, settings | ✅ Done |
 | 2. Knowledge management | Vault, rich-text notes, collections, tags, uploads, text extraction, chunking, saved links, keyword search | ✅ Done |
-| 3. AI assistant | Chat, conversations, provider adapters, embeddings, General / My Knowledge / Blended modes, RAG, citations | ⏳ Next |
-| 4. Discovery | Semantic search, knowledge graph (React Flow), AI-suggested links, timeline | — |
+| 3. AI assistant | Streaming chat, conversations, provider adapters, embeddings, vector search, General AI / My Knowledge modes, RAG with citations | ✅ Done |
+| 4. Discovery | Semantic search page, knowledge graph (React Flow), AI-suggested links, timeline | ⏳ Next |
 | 5. Refinement | Performance, accessibility audit, security review, wider test coverage | — |
 
 ---
@@ -224,8 +224,100 @@ See [`server/.env.example`](server/.env.example) for the annotated file.
 | `LINK_FETCH_TIMEOUT_MS` | | `10000` | Timeout for fetching saved links |
 | `LINK_MAX_BYTES` | | `3000000` | Maximum page size read when fetching a link |
 | `ALLOW_PRIVATE_LINK_FETCH` | | `false` | Dev/test only: allow fetching localhost and private IPs. Refused in production. |
+| `AI_PROVIDER` | | `anthropic` | Chat provider adapter |
+| `ANTHROPIC_API_KEY` | for chat | — | Anthropic API key. Without it, chat shows a setup message. |
+| `AI_MODEL` | | `claude-opus-5-5` | Chat model |
+| `AI_UTILITY_MODEL` | | `AI_MODEL` | Model for titles, follow-ups and summaries (e.g. `claude-haiku-5-5`) |
+| `AI_EFFORT` | | `medium` | `low` / `medium` / `high` / `xhigh` / `max` |
+| `AI_MAX_OUTPUT_TOKENS` | | `16000` | Maximum answer length |
+| `AI_REFUSAL_FALLBACKS` | | `true` | Anthropic server-side refusal fallbacks |
+| `EMBEDDING_PROVIDER` | | `voyage` | `voyage`, `openai` or `none` |
+| `VOYAGE_API_KEY` / `OPENAI_API_KEY` | for semantic search | — | Embedding provider key |
+| `EMBEDDING_MODEL` / `EMBEDDING_DIMENSIONS` | | provider default | `voyage-3.5`/1024, `text-embedding-3-small`/1536 |
+| `VECTOR_SEARCH` | | `auto` | `auto`, `atlas` or `local` |
+| `VECTOR_INDEX_NAME` | | `chunk_embedding_index` | Atlas Vector Search index name |
+| `RAG_TOP_K` | | `8` | Passages given to the model per question |
+| `RAG_MIN_SCORE` | | `0.3` | Minimum cosine similarity for a semantic-only match |
 
-The server validates these at boot and exits with a clear message if any are missing or invalid. Placeholders for Phase 3 (`AI_PROVIDER`, `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `EMBEDDING_PROVIDER`, `VOYAGE_API_KEY` and others) are listed but commented out in `.env.example`. They are not read yet.
+The server validates these at boot and exits with a clear message if any are missing or invalid.
+
+---
+
+## AI setup (Phase 3)
+
+1. **Chat (required for the assistant).** Create a key at <https://console.anthropic.com/> and add it to `server/.env`:
+   ```
+   AI_PROVIDER=anthropic
+   ANTHROPIC_API_KEY=sk-ant-...
+   ```
+   The default model is `claude-opus-5-5` at `AI_EFFORT=medium`. For a cheaper model for titles, follow-up suggestions and conversation summaries, set `AI_UTILITY_MODEL=claude-haiku-5-5`. **Refusal fallbacks are on by default:** if Claude declines a request on safety grounds, the API re-runs it on a fallback model in the same call. Set `AI_REFUSAL_FALLBACKS=false` to turn this off.
+2. **Embeddings (recommended, for semantic My Knowledge answers).** For Voyage AI, create a key at <https://dash.voyageai.com/> and set `EMBEDDING_PROVIDER=voyage` and `VOYAGE_API_KEY=...`. Alternatively, set `EMBEDDING_PROVIDER=openai` and `OPENAI_API_KEY=...`. Without embeddings, My Knowledge still works using keyword retrieval, and each answer says so.
+3. **Restart the server.** Existing notes, documents and links, including Phase 2 content, are queued for embedding automatically at startup. You can also use **Settings → AI assistant → Index missing items**.
+4. **Atlas Vector Search (optional, for large libraries).** With `MONGODB_URI` pointing at Atlas, run `npm run vector-index -w server` once. It creates this index on the `chunks` collection:
+   ```json
+   { "name": "chunk_embedding_index", "type": "vectorSearch",
+     "definition": { "fields": [
+       { "type": "vector", "path": "embedding", "numDimensions": 1024, "similarity": "cosine" },
+       { "type": "filter", "path": "user" },
+       { "type": "filter", "path": "embeddingModel" } ] } }
+   ```
+   `numDimensions` must match your embedding model. If you change the embedding model, recreate the index and choose **Rebuild everything** in Settings.
+
+### Vector search strategy
+
+`VECTOR_SEARCH=auto` (the default) uses **MongoDB Atlas Vector Search** (`$vectorSearch`, pre-filtered by `user` and `embeddingModel`) when it is available. Otherwise it computes **exact cosine similarity in-process** over the requesting user's own vectors. Local MongoDB and the in-memory development database don't support `$vectorSearch`, so local development needs no extra infrastructure. Exact search is fast at personal-library scale (tens of thousands of passages). Set `VECTOR_SEARCH=atlas` to require Atlas, or `local` to always use in-process search.
+
+## AI assistant architecture (Phase 3)
+
+**Providers** (`server/src/ai/`): `providers.js` is a registry. `anthropic.js` (the official `@anthropic-ai/sdk`) and `embeddings.js` (Voyage, OpenAI) register adapters with a small interface: `streamChat`, `completeJson` and `embed`. To add a provider, write an adapter, register a name, and select it with `AI_PROVIDER` / `EMBEDDING_PROVIDER`. Keys are read only on the server and are never sent to the browser.
+
+**Embedding pipeline:** after text extraction (Phase 2), each item's passages are embedded in a background queue. Every chunk stores:
+- `embedding`: a unit-length vector
+- `embeddingModel`: `provider:model:dimensions`
+- `embeddedAt` and `textHash`
+- its page and position (`index`)
+- its `resource` and `user`
+
+Each item tracks `embedding.status` (`pending` / `processing` / `ready` / `failed` / `disabled`).
+
+**No duplicate embeddings:** when an item is re-chunked, passages with an unchanged `textHash` keep their vectors, so editing one paragraph re-embeds only that passage. Note embeddings wait until 15 s after the last edit, and rate-limit or network errors are retried with backoff.
+
+**Retrieval (My Knowledge):**
+1. The query is embedded (`input_type: query`) and run through vector search *and* full-text search.
+2. The two rankings are merged with Reciprocal Rank Fusion.
+3. Passages below `RAG_MIN_SCORE` are dropped unless they also match on keywords.
+4. At most 3 passages per item are kept, up to `RAG_TOP_K` in total.
+
+Every query filters on the requesting user, and every result's item is re-checked for ownership. Short follow-up questions are expanded with the previous question before retrieval.
+
+**Generation and citations:** passages go to Claude in a `<sources>` block of numbered `<source>` tags. The system prompt:
+- requires inline `[n]` citations
+- forbids invented sources
+- requires saying so when the sources are insufficient
+- puts any general knowledge in a separate paragraph labelled **From general knowledge:**
+- treats passage text as data, not instructions
+
+After generation, only numbers that match retrieved passages become citations. Each stored citation keeps the chunk id, item id, title, type, page, section, excerpt and similarity, and the UI links it to the original item.
+
+**Chat runtime:** answers stream over Server-Sent Events (`start → status → sources → delta… → done → meta → end`).
+- **Duplicate submissions** are blocked by a client request id, enforced by a unique index.
+- **Concurrent generations** in one conversation are blocked by an atomic per-conversation lock, with recovery for stale locks.
+- **Stopping or disconnecting** saves the partial answer as *stopped*.
+- **Provider errors** are saved on the message with a message the user can retry from.
+- **Conversation memory:** recent turns are sent in full within a character budget. Older turns are folded into a rolling summary (one small structured-output call) that goes ahead of the history.
+- **Titles and follow-up suggestions** come from one structured-output call after the answer.
+- **Empty library:** in My Knowledge mode with nothing saved, Mindmesh replies with a clearly marked notice and does not call the model.
+
+### Assistant API
+
+| Method | Path | Description |
+| --- | --- | --- |
+| GET / POST | `/conversations` 🔒 | List (`q`, `limit`, `before`) / create `{ title?, mode? }` |
+| GET / PATCH / DELETE | `/conversations/:id` 🔒 | Messages, rename/mode change, delete (with its messages) |
+| POST | `/conversations/:id/messages` 🔒 | `{ content, mode: general\|knowledge, clientRequestId }` → `text/event-stream`. **503 `AI_NOT_CONFIGURED`** without a provider; **409** on duplicate or concurrent sends. |
+| POST | `/conversations/:id/messages/:messageId/regenerate` 🔒 | Replaces the latest answer (optional `{ mode }`), streamed |
+| GET | `/ai/status` 🔒 | Provider/model configuration (no secrets), vector-search mode, the user's index progress |
+| POST | `/ai/reindex` 🔒 | `{ force? }`: queue missing (or all) embeddings for the user's library |
 
 Client (optional, `client/.env`): `VITE_API_URL` overrides the API base URL (default `/api`), and `VITE_API_PROXY` changes the dev proxy target.
 
@@ -235,9 +327,9 @@ Client (optional, `client/.env`): `VITE_API_URL` overrides the API base URL (def
 | --- | --- | --- |
 | MongoDB (Atlas recommended) | All data | Phase 1 |
 | Google Fonts | Theme typography (system fallbacks are defined) | Phase 1 |
-| Atlas Vector Search | Semantic search and RAG retrieval | Phase 3–4 |
-| LLM provider (Anthropic or OpenAI, swappable) | Assistant | Phase 3 |
-| Embedding provider (Voyage or OpenAI, swappable) | Chunk and query embeddings | Phase 3 |
+| Anthropic API (Claude) | Assistant chat, titles, follow-ups, summaries | Phase 3 (required for chat) |
+| Voyage AI or OpenAI embeddings | Semantic retrieval in My Knowledge mode | Phase 3 (optional; keyword fallback) |
+| MongoDB Atlas Vector Search | Indexed vector search at scale | Phase 3 (optional; in-process search otherwise) |
 | Outbound internet access from the server | Fetching saved links | Phase 2 |
 
 No API keys are ever sent to or bundled into the frontend.
@@ -290,6 +382,28 @@ No API keys are ever sent to or bundled into the frontend.
 - The processing queue is **in-process**. It survives restarts (jobs are re-queued from the database) but isn't shared across multiple server instances.
 - Pages that need JavaScript to render their content may yield little text, and those that block bots are saved as bookmarks only.
 - Files are stored on **local disk**. Move `processing/storage.js` to S3/GCS for multi-server or serverless hosting.
+
+## Phase 3 checklist
+
+- [x] General-purpose assistant (Claude via the official SDK): works with an empty library and keeps conversation context
+- [x] Two clearly labelled modes, **General AI** and **My Knowledge**, switchable mid-conversation without losing it
+- [x] Provider registry with swappable chat and embedding adapters; keys stay on the server; a setup message (never a fake reply) when unconfigured
+- [x] Embedding pipeline with per-chunk vectors, model/version, page, position, ownership and status; Phase 2 content backfilled at boot; re-indexing on change; hash-based reuse to avoid duplicate embeddings
+- [x] Vector search: Atlas `$vectorSearch` when available, exact in-process cosine otherwise; hybrid fusion with keyword search; strictly per user
+- [x] RAG with numbered sources, guardrailed prompt, insufficiency admitted, general knowledge labelled, citations only for really retrieved passages (title, type, excerpt, page, link)
+- [x] Empty-library and nothing-relevant cases handled honestly
+- [x] Chat UI: history with search and date groups, new / rename / delete, timestamps, Markdown with GitHub tables, syntax-highlighted code with copy, copy response, regenerate, stop, live status (searching / thinking), error and retry states, follow-up suggestions, citation chips linked to source cards
+- [x] Streaming (SSE), duplicate-submission and concurrent-generation protection, partial answers saved on stop
+- [x] Conversation memory: recent window plus rolling summary
+- [x] Settings: default mode, response style, follow-ups, live AI status, index progress, re-index
+- [x] 16 new API tests (51 total) using test-only provider doubles
+
+### Known limitations (Phase 3)
+
+- **Not exercised against the live Claude/Voyage APIs in this environment**, because no API keys were available. The adapters follow the official SDK reference and are covered by the test doubles, but the first real run should be checked once keys are configured.
+- Retrieval quality without an embedding key is keyword-only.
+- Conversation search covers titles, not message text.
+- Answers aren't editable or branched; regenerate replaces only the latest answer.
 
 ### Known limitations in Phase 1
 

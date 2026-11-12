@@ -27,6 +27,15 @@ const FAILURE_HELP = {
   FETCH_BLOCKED: 'Private and local network addresses are blocked for security.',
 };
 
+const SEMANTIC_LABELS = {
+  none: 'Not indexed',
+  pending: 'Queued',
+  processing: 'Indexing…',
+  ready: 'Ready for My Knowledge',
+  failed: 'Failed (keyword search still works)',
+  disabled: 'Off (no embedding provider)',
+};
+
 /** Organisation, metadata and processing status for a single item. Saves immediately. */
 export default function DetailsPanel({ resource, onChange }) {
   const { refreshCollections, refreshTags } = useLibrary();
@@ -111,6 +120,9 @@ export default function DetailsPanel({ resource, onChange }) {
             </>
           )}
           {resource.type === 'note' && <Meta label="Words">{resource.note.wordCount.toLocaleString()}</Meta>}
+          <Meta label="Semantic index">
+            <span title={resource.semanticIndex?.error || resource.semanticIndex?.model || undefined}>{SEMANTIC_LABELS[resource.semanticIndex?.status || 'none']}</span>
+          </Meta>
           <Meta label="Created">{formatDate(resource.createdAt, { dateStyle: 'medium', timeStyle: 'short' })}</Meta>
           <Meta label="Updated">{formatDate(resource.updatedAt, { dateStyle: 'medium', timeStyle: 'short' })}</Meta>
         </dl>

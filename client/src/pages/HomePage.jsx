@@ -10,7 +10,7 @@ import { useTheme } from '../context/ThemeContext.jsx';
 import { usersApi } from '../api/endpoints.js';
 import { THEMES } from '../themes/registry.js';
 import { firstName, formatDate, relativeTime, themedDate, timeOfDay } from '../lib/format.js';
-import { ANSWER_MODE_OPTIONS } from '../lib/aiModes.js';
+import { ANSWER_MODE_OPTIONS, normalizeMode } from '../lib/aiModes.js';
 import Card, { CardHeader } from '../components/ui/Card.jsx';
 import Button from '../components/ui/Button.jsx';
 import EmptyState from '../components/ui/EmptyState.jsx';
@@ -135,7 +135,8 @@ export default function HomePage() {
   const libraryTotal = overview?.counts.total ?? 0;
 
   const greeting = t.greeting[timeOfDay()];
-  const mode = ANSWER_MODE_OPTIONS.find((m) => m.value === user.preferences?.ai?.defaultMode) || ANSWER_MODE_OPTIONS[0];
+  const mode = ANSWER_MODE_OPTIONS.find((m) => m.value === normalizeMode(user.preferences?.ai?.defaultMode));
+  const [askDraft, setAskDraft] = useState('');
   const interests = user.interests || [];
 
   const checklist = [
@@ -144,7 +145,7 @@ export default function HomePage() {
     { label: 'Pick topics you care about', done: interests.length > 0, to: '/settings/profile' },
     { label: 'Add a bio to your profile', done: Boolean(user.bio), to: '/settings/profile' },
     { label: 'Add something to your vault', done: libraryTotal > 0, to: '/vault' },
-    { label: 'Ask the assistant a question', done: false, phase: 3 },
+    { label: 'Ask the assistant a question', done: false, to: '/assistant' },
   ];
   const doneCount = checklist.filter((c) => c.done).length;
 
@@ -208,18 +209,31 @@ export default function HomePage() {
               </p>
             </div>
             <div className="w-full md:w-[340px]">
-              <div
-                className="flex items-center gap-2 rounded-control border border-line bg-sunken px-3 py-2.5 opacity-70 studio:border-white/10 studio:bg-white/5"
-                aria-disabled="true"
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (askDraft.trim()) navigate('/assistant', { state: { prompt: askDraft.trim(), mode: mode.value } });
+                }}
+                className="flex items-center gap-2 rounded-control border border-line bg-surface px-3 py-1.5 focus-within:border-accent studio:border-white/10 studio:bg-white/5"
               >
-                <Sparkles size={16} className="text-accent studio:text-[#f4c95d]" aria-hidden />
-                <span className="flex-1 font-ui text-sm text-ink-faint studio:text-[#9a95ad]">Ask anything…</span>
-                <span className="rounded-pill border border-line px-1.5 py-px font-mono text-[0.6rem] text-ink-faint uppercase studio:border-white/15">
-                  Phase 3
-                </span>
-              </div>
-              <Link to="/settings/ai" className="mt-2 inline-flex font-ui text-xs text-ink-muted underline-offset-4 hover:underline studio:text-[#bdb8cc]">
-                Set assistant preferences now
+                <Sparkles size={16} className="shrink-0 text-accent studio:text-[#f4c95d]" aria-hidden />
+                <label htmlFor="home-ask" className="sr-only">
+                  Ask the assistant
+                </label>
+                <input
+                  id="home-ask"
+                  value={askDraft}
+                  onChange={(e) => setAskDraft(e.target.value)}
+                  maxLength={12000}
+                  placeholder="Ask anything…"
+                  className="min-w-0 flex-1 bg-transparent py-1 font-ui text-sm text-ink outline-none placeholder:text-ink-faint studio:text-surface studio:placeholder:text-[#9a95ad]"
+                />
+                <button type="submit" disabled={!askDraft.trim()} className="mm-btn mm-btn-primary mm-btn-sm mm-btn-icon" aria-label="Ask">
+                  <ArrowRight size={14} />
+                </button>
+              </form>
+              <Link to="/assistant" className="mt-2 inline-flex font-ui text-xs text-ink-muted underline-offset-4 hover:underline studio:text-[#bdb8cc]">
+                Open the assistant and your chat history
               </Link>
             </div>
           </div>
@@ -235,7 +249,7 @@ export default function HomePage() {
               <QuickAction icon={FileText} label="New note" hint="Start writing with autosave" onClick={newNote} busy={creating} />
               <QuickAction icon={Upload} label="Upload a document" hint="PDF, Word, text, Markdown…" to="/vault?upload=1" tone="accent-3" />
               <QuickAction icon={Link2} label="Save a link" hint="Keep a web page and its text" to="/vault?link=1" tone="accent-2" />
-              <QuickAction icon={MessageSquareText} label="Start a conversation" phase={3} tone="accent-2" />
+              <QuickAction icon={MessageSquareText} label="Start a conversation" hint="General AI or My Knowledge" to="/assistant" tone="accent-2" />
             </div>
           </Card>
         </motion.div>

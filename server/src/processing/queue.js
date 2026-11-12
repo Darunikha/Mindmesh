@@ -1,57 +1,85 @@
-import env from '../config/env.js';
-
 /**
- * In-process background job queue for resource processing.
+ * In-process background job queues.
  *
- * Jobs run outside the request cycle (uploads return immediately with status "pending")
- * with bounded concurrency. Durable state lives in MongoDB (processing.status), so jobs
- * interrupted by a restart are re-queued at boot by recoverStuckJobs().
- * For multi-instance deployments this can be replaced by a shared queue (e.g. BullMQ)
- * without changing callers: they only call enqueue(resourceId).
+ * Jobs run outside the request cycle with bounded concurrency. Durable state lives in
+ * MongoDB (processing.status / embedding.status), so work interrupted by a restart is
+ * re-queued at boot. For multi-instance deployments these can be swapped for a shared
+ * queue (e.g. BullMQ) without changing callers: they only call `enqueue(id)`.
  */
-let handler = null;
-const waiting = [];
-const queued = new Set();
-let active = 0;
-let idleResolvers = [];
+const queues = new Set();
 
-export function setJobHandler(fn) {
-  handler = fn;
+export function createQueue({ name, concurrency = 2 }) {
+  let handler = null;
+  const waiting = [];
+  const queued = new Set();
+  const timers = new Map();
+  let active = 0;
+
+  const q = {
+    name,
+    setHandler(fn) {
+      handler = fn;
+      setImmediate(drain);
+    },
+    /** Adds a job. With `delay`, the job is (re)scheduled, so rapid repeats coalesce into one run. */
+    enqueue(id, { delay = 0 } = {}) {
+      const key = String(id);
+      if (delay > 0) {
+        clearTimeout(timers.get(key));
+        timers.set(
+          key,
+          setTimeout(() => {
+            timers.delete(key);
+            q.enqueue(key);
+          }, delay)
+        );
+        return;
+      }
+      if (queued.has(key)) return;
+      queued.add(key);
+      waiting.push(key);
+      setImmediate(drain);
+    },
+    isIdle: () => active === 0 && waiting.length === 0 && timers.size === 0,
+    stats: () => ({ active, waiting: waiting.length, scheduled: timers.size }),
+    /** Runs scheduled (delayed) jobs now. Used by tests and shutdown. */
+    flushScheduled() {
+      for (const [key, t] of timers) {
+        clearTimeout(t);
+        timers.delete(key);
+        q.enqueue(key);
+      }
+    },
+  };
+
+  function drain() {
+    while (handler && active < concurrency && waiting.length) {
+      const id = waiting.shift();
+      active += 1;
+      Promise.resolve()
+        .then(() => handler(id))
+        .catch((err) => console.error(`[mindmesh] ${name} job ${id} crashed:`, err))
+        .finally(() => {
+          active -= 1;
+          queued.delete(id);
+          drain();
+        });
+    }
+  }
+
+  queues.add(q);
+  return q;
 }
 
-export function enqueue(resourceId) {
-  const id = String(resourceId);
-  if (queued.has(id)) return;
-  queued.add(id);
-  waiting.push(id);
-  setImmediate(drain);
-}
-
-function drain() {
-  while (handler && active < env.PROCESSING_CONCURRENCY && waiting.length) {
-    const id = waiting.shift();
-    active += 1;
-    Promise.resolve()
-      .then(() => handler(id))
-      .catch((err) => console.error(`[mindmesh] Processing job ${id} crashed:`, err))
-      .finally(() => {
-        active -= 1;
-        queued.delete(id);
-        if (active === 0 && waiting.length === 0) {
-          idleResolvers.forEach((r) => r());
-          idleResolvers = [];
-        }
-        drain();
-      });
+/** Resolves when every queue is idle (used by tests and graceful shutdown). */
+export async function waitForIdle({ flushScheduled = true } = {}) {
+  for (;;) {
+    if (flushScheduled) queues.forEach((q) => q.flushScheduled());
+    if ([...queues].every((q) => q.isIdle())) return;
+    await new Promise((r) => setTimeout(r, 20));
   }
 }
 
-/** Resolves when no jobs are running or waiting (used by tests and graceful shutdown). */
-export function waitForIdle() {
-  if (active === 0 && waiting.length === 0) return Promise.resolve();
-  return new Promise((resolve) => idleResolvers.push(resolve));
-}
-
 export function queueStats() {
-  return { active, waiting: waiting.length };
+  return Object.fromEntries([...queues].map((q) => [q.name, q.stats()]));
 }

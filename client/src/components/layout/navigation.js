@@ -11,7 +11,7 @@ export const NAV_SECTIONS = [
     titles: { library: 'The Reading Room', studio: 'Workspace', lab: '01 / Core' },
     items: [
       { to: '/', label: 'Home', icon: House, end: true, tint: 'accent' },
-      { to: '/assistant', label: 'Assistant', icon: Sparkles, phase: 3, tint: 'accent-2' },
+      { to: '/assistant', label: 'Assistant', icon: Sparkles, tint: 'accent-2' },
     ],
   },
   {

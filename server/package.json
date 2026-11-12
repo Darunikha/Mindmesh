@@ -7,9 +7,11 @@
   "scripts": {
     "dev": "node --watch --env-file-if-exists=.env src/index.js",
     "start": "node --env-file-if-exists=.env src/index.js",
-    "test": "node --test --test-concurrency=1 \"tests/**/*.test.js\""
+    "test": "node --test --test-concurrency=1 \"tests/**/*.test.js\"",
+    "vector-index": "node --env-file-if-exists=.env scripts/create-vector-index.js"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^1.8.0",
     "bcryptjs": "^3.0.3",
     "cheerio": "^1.2.0",
     "cookie-parser": "^1.4.7",

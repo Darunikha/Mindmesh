@@ -12,6 +12,9 @@ import userRoutes from './modules/users/users.routes.js';
 import libraryRoutes from './modules/library/library.routes.js';
 import collectionRoutes from './modules/collections/collections.routes.js';
 import tagRoutes from './modules/tags/tags.routes.js';
+import chatRoutes from './modules/chat/chat.routes.js';
+import aiRoutes from './modules/ai/ai.routes.js';
+import './ai/index.js';
 
 export function createApp() {
   const app = express();
@@ -45,6 +48,8 @@ export function createApp() {
   app.use('/api/resources', libraryRoutes);
   app.use('/api/collections', collectionRoutes);
   app.use('/api/tags', tagRoutes);
+  app.use('/api/conversations', chatRoutes);
+  app.use('/api/ai', aiRoutes);
 
   app.use('/api', notFoundHandler);
   app.use(errorHandler);

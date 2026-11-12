@@ -2,13 +2,16 @@ import env from './config/env.js';
 import { connectDatabase, disconnectDatabase } from './config/db.js';
 import { createApp } from './app.js';
 import { ensureStorage } from './processing/storage.js';
+import './ai/index.js';
 import { recoverStuckJobs } from './processing/processor.js';
+import { recoverEmbeddings } from './processing/embedder.js';
 import { waitForIdle } from './processing/queue.js';
 
 async function main() {
   await connectDatabase();
   await ensureStorage();
   await recoverStuckJobs();
+  await recoverEmbeddings();
   const app = createApp();
   const server = app.listen(env.PORT, () => {
     console.log(`[mindmesh] API listening on http://localhost:${env.PORT} (${env.NODE_ENV})`);

@@ -6,15 +6,34 @@ import { chunkSegments, excerptOf } from './chunker.js';
 import { ExtractionError, extractFromFile } from './extractors.js';
 import { FetchError, fetchLink } from './linkFetcher.js';
 import { docToSegments } from './noteContent.js';
-import { enqueue, setJobHandler } from './queue.js';
+import env from '../config/env.js';
+import { createQueue } from './queue.js';
+import { NOTE_EMBED_DELAY_MS, hashText, scheduleEmbedding } from './embedder.js';
+
+export const processingQueue = createQueue({ name: 'processing', concurrency: env.PROCESSING_CONCURRENCY });
+export const enqueue = (id) => processingQueue.enqueue(id);
 
 /** Replaces a resource's chunks. If the resource was deleted meanwhile, cleans up instead. */
 export async function writeChunks(resource, segments) {
-  const chunks = chunkSegments(segments);
+  const chunks = chunkSegments(segments).map((c) => ({ ...c, textHash: hashText(c.text) }));
+  // Keep vectors for passages whose text is unchanged, so edits don't re-embed the whole item.
+  const previous = await Chunk.find({ resource: resource._id, embeddingModel: { $ne: null } }, { textHash: 1, embeddingModel: 1, embeddedAt: 1 })
+    .select('+embedding')
+    .lean();
+  const reusable = new Map(previous.filter((p) => p.textHash && p.embedding?.length).map((p) => [p.textHash, p]));
   await Chunk.deleteMany({ resource: resource._id });
   if (chunks.length) {
     await Chunk.insertMany(
-      chunks.map((c) => ({ ...c, user: resource.user, resource: resource._id, resourceType: resource.type })),
+      chunks.map((c) => {
+        const prev = reusable.get(c.textHash);
+        return {
+          ...c,
+          user: resource.user,
+          resource: resource._id,
+          resourceType: resource.type,
+          ...(prev ? { embedding: prev.embedding, embeddingModel: prev.embeddingModel, embeddedAt: prev.embeddedAt } : {}),
+        };
+      }),
       { ordered: true }
     );
   }
@@ -22,6 +41,7 @@ export async function writeChunks(resource, segments) {
     await Chunk.deleteMany({ resource: resource._id });
     return null;
   }
+  await scheduleEmbedding(resource._id, { delay: resource.type === 'note' ? NOTE_EMBED_DELAY_MS : 0 });
   return { chunkCount: chunks.length, charCount: chunks.reduce((n, c) => n + c.charCount, 0), excerpt: excerptOf(segments) };
 }
 
@@ -142,4 +162,4 @@ export async function recoverStuckJobs() {
   }
 }
 
-setJobHandler(processResource);
+processingQueue.setHandler(processResource);
