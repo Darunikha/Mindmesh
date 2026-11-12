@@ -1,7 +1,10 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowRight, Check, Compass, FileText, MessageSquareText, Palette, Plus, Sparkles, Upload, UserRound } from 'lucide-react';
+import { ArrowRight, Check, Compass, FileText, Link2, MessageSquareText, Palette, Plus, Sparkles, Upload } from 'lucide-react';
+import { libraryApi } from '../api/library.js';
+import { useToast } from '../context/ToastContext.jsx';
+import { TypeBadge } from '../components/library/Badges.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useTheme } from '../context/ThemeContext.jsx';
 import { usersApi } from '../api/endpoints.js';
@@ -21,7 +24,7 @@ const fade = (i) => ({
   transition: { duration: 0.4, delay: 0.05 * i, ease: [0.2, 0.8, 0.2, 1] },
 });
 
-function QuickAction({ icon: Icon, label, hint, to, phase, tone = 'accent' }) {
+function QuickAction({ icon: Icon, label, hint, to, onClick, busy, phase, tone = 'accent' }) {
   const tones = {
     accent: 'studio:bg-accent-soft studio:text-accent',
     'accent-2': 'studio:bg-accent-2-soft studio:text-accent-2',
@@ -55,10 +58,40 @@ function QuickAction({ icon: Icon, label, hint, to, phase, tone = 'accent' }) {
       </div>
     );
   }
+  if (onClick) {
+    return (
+      <button type="button" onClick={onClick} disabled={busy} aria-busy={busy || undefined} className={cn(cls, 'w-full text-left hover:border-line-strong disabled:opacity-60 studio:hover:bg-sunken')}>
+        {inner}
+      </button>
+    );
+  }
   return (
     <Link to={to} className={cn(cls, 'hover:border-line-strong studio:hover:bg-sunken')}>
       {inner}
     </Link>
+  );
+}
+
+function RecentList({ title, items, empty }) {
+  return (
+    <div>
+      <p className="mm-eyebrow mb-2">{title}</p>
+      {items?.length ? (
+        <ul className="space-y-0.5">
+          {items.map((r) => (
+            <li key={r.id}>
+              <Link to={`/vault/${r.id}`} className="group flex items-center gap-2.5 rounded-control px-2 py-1.5 hover:bg-sunken">
+                <TypeBadge type={r.type} className="w-[4.5rem] shrink-0" />
+                <span className="min-w-0 flex-1 truncate font-ui text-sm text-ink group-hover:text-accent library:font-display library:text-base">{r.title}</span>
+                <span className="shrink-0 font-ui text-xs text-ink-faint">{relativeTime(r.lastAccessedAt || r.createdAt)}</span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="px-2 font-ui text-sm text-ink-faint">{empty}</p>
+      )}
+    </div>
   );
 }
 
@@ -68,6 +101,11 @@ export default function HomePage() {
   const t = THEMES[theme];
   const [sessions, setSessions] = useState(null);
   const [sessionsError, setSessionsError] = useState(null);
+  const [overview, setOverview] = useState(null);
+  const [overviewError, setOverviewError] = useState(null);
+  const [creating, setCreating] = useState(false);
+  const navigate = useNavigate();
+  const toast = useToast();
 
   useEffect(() => {
     let alive = true;
@@ -75,10 +113,26 @@ export default function HomePage() {
       .sessions()
       .then((d) => alive && setSessions(d.sessions))
       .catch((e) => alive && setSessionsError(e.message));
+    libraryApi
+      .overview()
+      .then((d) => alive && setOverview(d))
+      .catch((e) => alive && setOverviewError(e.message));
     return () => {
       alive = false;
     };
   }, []);
+
+  const newNote = async () => {
+    setCreating(true);
+    try {
+      const { resource } = await libraryApi.createNote({});
+      navigate(`/vault/${resource.id}`, { state: { fresh: true } });
+    } catch (err) {
+      toast.error(err.message);
+      setCreating(false);
+    }
+  };
+  const libraryTotal = overview?.counts.total ?? 0;
 
   const greeting = t.greeting[timeOfDay()];
   const mode = ANSWER_MODE_OPTIONS.find((m) => m.value === user.preferences?.ai?.defaultMode) || ANSWER_MODE_OPTIONS[0];
@@ -89,7 +143,7 @@ export default function HomePage() {
     { label: 'Choose a theme', done: user.onboardingCompleted },
     { label: 'Pick topics you care about', done: interests.length > 0, to: '/settings/profile' },
     { label: 'Add a bio to your profile', done: Boolean(user.bio), to: '/settings/profile' },
-    { label: 'Save your first note', done: false, phase: 2 },
+    { label: 'Add something to your vault', done: libraryTotal > 0, to: '/vault' },
     { label: 'Ask the assistant a question', done: false, phase: 3 },
   ];
   const doneCount = checklist.filter((c) => c.done).length;
@@ -178,10 +232,10 @@ export default function HomePage() {
           <Card className="h-full p-5 sm:p-6">
             <CardHeader eyebrow="Quick actions" title="Get things moving" />
             <div className="mt-5 grid gap-3 sm:grid-cols-2">
-              <QuickAction icon={FileText} label="New note" phase={2} />
-              <QuickAction icon={Upload} label="Upload a document" phase={2} tone="accent-3" />
+              <QuickAction icon={FileText} label="New note" hint="Start writing with autosave" onClick={newNote} busy={creating} />
+              <QuickAction icon={Upload} label="Upload a document" hint="PDF, Word, text, Markdown…" to="/vault?upload=1" tone="accent-3" />
+              <QuickAction icon={Link2} label="Save a link" hint="Keep a web page and its text" to="/vault?link=1" tone="accent-2" />
               <QuickAction icon={MessageSquareText} label="Start a conversation" phase={3} tone="accent-2" />
-              <QuickAction icon={UserRound} label="Edit your profile" hint="Name, bio and topics" to="/settings/profile" tone="accent-2" />
             </div>
           </Card>
         </motion.div>
@@ -260,9 +314,30 @@ export default function HomePage() {
           <Card className="h-full p-5 sm:p-6">
             <CardHeader eyebrow="Knowledge activity" title="Your library" />
             <div className="mt-4 grid gap-4 sm:grid-cols-[1fr_1.1fr]">
-              <EmptyState icon={FileText} title="Nothing saved yet" compact className="rounded-card border border-dashed border-line-strong">
-                Recent notes, documents and searches will appear here once the Knowledge Vault opens in Phase 2.
-              </EmptyState>
+              {overviewError ? (
+                <p className="font-ui text-sm text-danger">{overviewError}</p>
+              ) : !overview ? (
+                <Skeleton lines={5} />
+              ) : libraryTotal === 0 ? (
+                <EmptyState
+                  icon={FileText}
+                  title="Nothing saved yet"
+                  compact
+                  className="rounded-card border border-dashed border-line-strong"
+                  action={
+                    <Button size="sm" icon={Plus} onClick={newNote} loading={creating}>
+                      New note
+                    </Button>
+                  }
+                >
+                  Notes, documents and links you add will appear here.
+                </EmptyState>
+              ) : (
+                <div className="space-y-4">
+                  <RecentList title="Recently opened" items={overview.recentlyAccessed.slice(0, 4)} empty="Nothing opened yet." />
+                  <RecentList title="Recently added" items={overview.recentlyAdded.slice(0, 4)} empty="Nothing added yet." />
+                </div>
+              )}
               <dl className="space-y-3 font-ui text-sm">
                 <div className="flex items-baseline justify-between gap-3 border-b border-line pb-3">
                   <dt className="text-ink-muted">Member since</dt>

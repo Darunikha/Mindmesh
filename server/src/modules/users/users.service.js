@@ -2,6 +2,7 @@ import User from '../../models/User.js';
 import Session from '../../models/Session.js';
 import ApiError from '../../utils/ApiError.js';
 import { hashPassword, revokeAllSessions, verifyPassword } from '../auth/auth.service.js';
+import { deleteAllForUser } from '../library/library.service.js';
 
 /** Flattens a nested partial object into Mongo dot-paths: {ai:{x:1}} -> {'preferences.ai.x': 1} */
 function toDotPaths(obj, prefix) {
@@ -82,7 +83,8 @@ export async function deleteAccount(userId, password) {
   if (!(await verifyPassword(password, user.passwordHash))) {
     throw ApiError.badRequest('Password is incorrect', { fields: { password: 'Password is incorrect' } });
   }
-  // Later phases register their own cleanup here (notes, documents, chunks, conversations...).
+  // Remove all owned data and stored files. Later phases add conversations here.
+  await deleteAllForUser(userId);
   await Session.deleteMany({ user: userId });
   await User.deleteOne({ _id: userId });
 }

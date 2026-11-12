@@ -25,6 +25,15 @@ const schema = z.object({
 
   BCRYPT_ROUNDS: z.coerce.number().int().min(4).max(15).default(12),
   TRUST_PROXY: bool,
+
+  // Phase 2: knowledge library
+  UPLOAD_DIR: z.string().default('./uploads'),
+  MAX_UPLOAD_MB: z.coerce.number().positive().max(200).default(25),
+  PROCESSING_CONCURRENCY: z.coerce.number().int().min(1).max(8).default(2),
+  LINK_FETCH_TIMEOUT_MS: z.coerce.number().int().min(1000).max(60000).default(10000),
+  LINK_MAX_BYTES: z.coerce.number().int().min(10000).default(3000000),
+  // Allows fetching localhost/private addresses. Development/testing only.
+  ALLOW_PRIVATE_LINK_FETCH: bool,
 });
 
 const parsed = schema.safeParse(process.env);
@@ -46,6 +55,11 @@ if (!env.MONGODB_URI && !env.USE_IN_MEMORY_DB && env.NODE_ENV !== 'test') {
 
 if (env.NODE_ENV === 'production' && env.USE_IN_MEMORY_DB) {
   console.error('\n[mindmesh] USE_IN_MEMORY_DB cannot be used in production.\n');
+  process.exit(1);
+}
+
+if (env.NODE_ENV === 'production' && env.ALLOW_PRIVATE_LINK_FETCH) {
+  console.error('\n[mindmesh] ALLOW_PRIVATE_LINK_FETCH cannot be enabled in production.\n');
   process.exit(1);
 }
 

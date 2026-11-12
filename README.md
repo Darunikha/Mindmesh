@@ -2,13 +2,13 @@
 
 An AI-powered personal knowledge and learning workspace: a general-purpose AI assistant, a personal knowledge vault, semantic search, document analysis and an interactive knowledge graph, in three distinct visual themes.
 
-> **Status: Phase 1 (Foundation) complete.** Authentication, onboarding, the theme system, the app shell, the home dashboard and settings are working end to end. Modules from later phases appear in the navigation as disabled items marked with their phase (`P2`, `P3`, `P4`). They are never linked to empty or fake pages.
+> **Status: Phase 2 (Knowledge management) complete.** On top of the Phase 1 foundation, the Knowledge Vault, rich-text notes with autosave, document uploads with background text extraction, saved links, collections, tags and full-text search are working end to end. Modules from later phases appear in the navigation as disabled items marked with their phase (`P3`, `P4`). They are never linked to empty or fake pages.
 
 | Phase | Scope | Status |
 | --- | --- | --- |
 | 1. Foundation | Monorepo, Express API, MongoDB, JWT auth with rotating refresh tokens, onboarding, three themes, shared UI, navigation, home, settings | ✅ Done |
-| 2. Knowledge management | Vault, rich-text notes, collections, tags, uploads, text extraction, chunking, embeddings | ⏳ Next |
-| 3. AI assistant | Chat, conversations, provider adapters, General / My Knowledge / Blended modes, RAG, citations | — |
+| 2. Knowledge management | Vault, rich-text notes, collections, tags, uploads, text extraction, chunking, saved links, keyword search | ✅ Done |
+| 3. AI assistant | Chat, conversations, provider adapters, embeddings, General / My Knowledge / Blended modes, RAG, citations | ⏳ Next |
 | 4. Discovery | Semantic search, knowledge graph (React Flow), AI-suggested links, timeline | — |
 | 5. Refinement | Performance, accessibility audit, security review, wider test coverage | — |
 
@@ -143,7 +143,61 @@ All routes are prefixed with `/api`. 🔒 means `Authorization: Bearer <accessTo
 | POST | `/users/me/password` 🔒 | `{ currentPassword, newPassword }`. Signs out other sessions. |
 | GET | `/users/me/sessions` 🔒 | Active sessions (the current one is flagged) |
 | DELETE | `/users/me/sessions/:id` 🔒 | Revoke one of your own sessions |
-| DELETE | `/users/me` 🔒 | `{ password, confirm: "DELETE" }`. Deletes the account. |
+| DELETE | `/users/me` 🔒 | `{ password, confirm: "DELETE" }`. Deletes the account and all of its library data and files. |
+
+### Knowledge library (Phase 2)
+
+| Method | Path | Description |
+| --- | --- | --- |
+| GET | `/resources` 🔒 | List or search. Query: `q`, `type` (`note`/`document`/`link`), `collection` (id or `none`), `tags` (comma-separated ids, all must match), `pinned`, `status`, `sort` (`relevance`/`updated`/`created`/`accessed`/`title`), `page`, `limit` (max 60) |
+| GET | `/resources/overview` 🔒 | Counts by type, pinned, recently opened, recently added |
+| POST | `/resources/notes` 🔒 | `{ title?, content? (TipTap JSON), collectionId?, tags?: string[], pinned? }` |
+| POST | `/resources/documents` 🔒 | `multipart/form-data`: `file`, optional `title`, `collectionId`, `tags` (JSON array). Returns **202** with status `pending`. |
+| POST | `/resources/links` 🔒 | `{ url, title?, collectionId?, tags? }`. Returns **202**; the page is fetched in the background. |
+| GET | `/resources/:id` 🔒 | One item (records the access; add `?touch=false` to skip) |
+| PATCH | `/resources/:id` 🔒 | `{ title?, pinned?, collectionId?, tags?, content?, baseRevision? }`. Content saves need the `baseRevision` they were edited from, and a stale one gets **409 `NOTE_CONFLICT`**. |
+| GET | `/resources/:id/chunks` 🔒 | Indexed text passages (`page`, `limit`) |
+| GET | `/resources/:id/file` 🔒 | The original upload, streamed with safe headers (`?download=1` to force a download) |
+| POST | `/resources/:id/reprocess` 🔒 | Re-run extraction for a document or link |
+| DELETE | `/resources/:id` 🔒 | Deletes the item, its passages and its stored file |
+| POST | `/resources/bulk` 🔒 | `{ ids, action: move/pin/unpin/delete/addTags, collectionId?, tags? }` |
+| GET / POST | `/collections` 🔒 | List (flat, with item counts and `unfiledCount`) / create `{ name, description?, parentId? }` |
+| PATCH | `/collections/:id` 🔒 | Rename, re-describe or move (`parentId`). Cycles and nesting deeper than 3 levels are rejected. |
+| DELETE | `/collections/:id` 🔒 | Optional `?moveTo=<id>`. Items are **never deleted**: they move to `moveTo` or become unfiled, and sub-collections move up one level. |
+| GET / POST | `/tags` 🔒 | List with counts / create `{ name }` |
+| PATCH / DELETE | `/tags/:id` 🔒 | Rename / delete (the tag is removed from items; the items are kept) |
+
+---
+
+## Knowledge library architecture (Phase 2)
+
+**One `Resource` model** stores notes, documents and links. Shared concerns live in one place: ownership, title, pinning, `collectionId`, tags, `lastAccessedAt` and processing status. Type-specific data lives in the `note`, `file` and `link` sub-documents. This keeps listing, search, recents and the future knowledge graph uniform across types.
+
+**`Chunk` documents** hold extracted text passages, each with `user`, `resource`, `index`, `page`/`pageEnd` (PDFs), the nearest `heading` (notes and Markdown), `charCount` and `tokenEstimate`. Chunks back full-text search now. In Phase 3 each chunk gains an `embedding` field for vector search and RAG, so no re-architecture is needed.
+
+**Processing pipeline** (`server/src/processing/`):
+
+```
+upload ─► multer (size/type limits) ─► signature check (magic bytes / UTF-8) ─► random storage key
+      ─► Resource{status: pending} ─► 202 to client
+                                        │  in-process queue (PROCESSING_CONCURRENCY)
+                                        ▼
+         extract (pdfjs per page · mammoth · markdown/html/csv/json/rtf readers)
+      ─► normalise + chunk (~1,200 chars, ~200 overlap, page & heading aware)
+      ─► replace Chunk docs ─► status ready | failed (with a user-facing reason)
+```
+
+- Jobs run outside the request cycle. Status is durable in MongoDB, and jobs interrupted by a restart are re-queued at boot. The queue module has a single `enqueue(id)` entry point, so it can be swapped for BullMQ/Redis in multi-instance deployments.
+- A PDF with no extractable text (e.g. a scan) is marked **failed** with `NO_TEXT`, never "ready". OCR isn't implemented.
+- Notes are chunked synchronously on every save, since they are small.
+
+**Note editor:** TipTap 3 (StarterKit: headings, lists, quotes, code blocks, bold/italic/underline/strike, links, undo/redo). Content is stored as ProseMirror JSON. The server sanitises it (structure and depth limits, `javascript:` links stripped) and never renders it as HTML. Autosave is debounced (~0.9 s) with one request in flight at a time. **Optimistic concurrency** (`note.revision` + `baseRevision`) detects edits from another tab: autosave pauses and the user chooses *Load latest* or *Save mine as a copy*.
+
+**Saved links (SSRF-safe fetching):** only `http(s)`. Every DNS answer is checked at connect time, so private, loopback, link-local, CGNAT and cloud-metadata ranges are refused, which also defeats DNS rebinding. Redirects are followed manually (max 5) and each hop is re-validated. There are timeouts, a byte cap and a content-type allow-list, and **robots.txt is honoured**. When a site disallows bots, the link is kept as a bookmark and labelled *Bookmark only*. Unreachable, 403/404 and rate-limited pages are reported honestly with the reason, and you can retry them.
+
+**File security:** files are stored under `UPLOAD_DIR/<userId>/<random>.<ext>` and user-supplied names never touch the filesystem. They are served only through an authenticated, ownership-checked route with `Content-Security-Policy: sandbox`, and HTML or text uploads are always served as `text/plain`. Deleting an item or an account removes its files.
+
+**Search (Phase 2):** a MongoDB text index over titles, descriptions and domains (title-weighted), plus a text index over every chunk's content, merged and ranked together. A title substring match adds partial-word matches. Results include a snippet and page number from the best-matching passage. Semantic search arrives in Phase 4 on the same chunks.
 
 ---
 
@@ -164,8 +218,14 @@ See [`server/.env.example`](server/.env.example) for the annotated file.
 | `ACCESS_TOKEN_TTL` | | `15m` | Access-token lifetime |
 | `REFRESH_TOKEN_TTL_DAYS` | | `14` | Session lifetime |
 | `BCRYPT_ROUNDS` | | `12` | Password hashing cost |
+| `UPLOAD_DIR` | | `./uploads` | Where uploaded files are stored (relative to `server/`; gitignored) |
+| `MAX_UPLOAD_MB` | | `25` | Per-file upload limit |
+| `PROCESSING_CONCURRENCY` | | `2` | Background extraction jobs that run in parallel |
+| `LINK_FETCH_TIMEOUT_MS` | | `10000` | Timeout for fetching saved links |
+| `LINK_MAX_BYTES` | | `3000000` | Maximum page size read when fetching a link |
+| `ALLOW_PRIVATE_LINK_FETCH` | | `false` | Dev/test only: allow fetching localhost and private IPs. Refused in production. |
 
-The server validates these at boot and exits with a clear message if any are missing or invalid. Placeholders for later phases (`AI_PROVIDER`, `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `EMBEDDING_PROVIDER`, `VOYAGE_API_KEY`, `UPLOAD_DIR` and others) are listed but commented out in `.env.example`. They are not read yet.
+The server validates these at boot and exits with a clear message if any are missing or invalid. Placeholders for Phase 3 (`AI_PROVIDER`, `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `EMBEDDING_PROVIDER`, `VOYAGE_API_KEY` and others) are listed but commented out in `.env.example`. They are not read yet.
 
 Client (optional, `client/.env`): `VITE_API_URL` overrides the API base URL (default `/api`), and `VITE_API_PROXY` changes the dev proxy target.
 
@@ -177,7 +237,8 @@ Client (optional, `client/.env`): `VITE_API_URL` overrides the API base URL (def
 | Google Fonts | Theme typography (system fallbacks are defined) | Phase 1 |
 | Atlas Vector Search | Semantic search and RAG retrieval | Phase 3–4 |
 | LLM provider (Anthropic or OpenAI, swappable) | Assistant | Phase 3 |
-| Embedding provider (Voyage or OpenAI, swappable) | Chunk and query embeddings | Phase 2–3 |
+| Embedding provider (Voyage or OpenAI, swappable) | Chunk and query embeddings | Phase 3 |
+| Outbound internet access from the server | Fetching saved links | Phase 2 |
 
 No API keys are ever sent to or bundled into the frontend.
 
@@ -203,6 +264,32 @@ No API keys are ever sent to or bundled into the frontend.
 - [x] Home dashboard showing only real data (profile, interests map, setup progress, sessions)
 - [x] Settings: Profile, Account, Appearance, AI, Knowledge library, Security
 - [x] Reduced-motion support (system setting plus account preference)
+
+## Phase 2 checklist
+
+- [x] `Resource`, `Chunk`, `Collection` and `Tag` models with user-scoped indexes and text indexes
+- [x] Knowledge Vault: grid/list views (each theme with its own card and table design), search, type filter, collection and tag navigation, sorting, pagination, pinned and recently opened items, drag-and-drop upload
+- [x] Rich-text notes: headings, paragraphs, bold/italic/underline/strike, bullet and numbered lists, links (Ctrl/⌘+K), inline code, code blocks, blockquotes, dividers, undo/redo
+- [x] Autosave with a live status (saving / saved / unsaved / failed + retry / edited elsewhere), Ctrl/⌘+S, unsaved-changes warning, conflict detection with *Load latest* / *Save mine as a copy*
+- [x] Uploads: PDF, DOCX, TXT, MD, CSV, JSON, HTML, RTF; extension + MIME + signature validation, size limit, per-file progress, cancel and retry
+- [x] Background pipeline: extract → chunk (with page and heading metadata) → store → ready/failed with reasons; retry; crash recovery
+- [x] Document view: inline PDF preview, extracted-text view for every format, download, rename, delete
+- [x] Saved links: title, description, domain, site name, favicon and preview image, extracted article text; SSRF protection; robots.txt; honest failure states
+- [x] Collections: create, rename, describe, nest (3 levels), move, open, delete without losing items (unfile or move elsewhere)
+- [x] Tags: create, rename, delete, assign many per item with autocomplete and inline creation, filter by several tags
+- [x] Full-text search across titles and the contents of notes, documents and pages, with snippets and page numbers
+- [x] Home dashboard: real quick actions, recently opened and recently added items
+- [x] Ownership checks on every query; cross-user access tests; files and chunks removed on delete and on account deletion
+- [x] 24 new API tests (35 total), including generated PDF/DOCX fixtures, a local web server for link tests, and SSRF cases
+
+### Known limitations
+
+- **Scanned PDFs** (images only) are marked failed with a clear message, because OCR isn't implemented.
+- Legacy `.doc`, `.pptx` and `.xlsx` files and **images** are not accepted yet.
+- Search is **keyword-based** for now. Semantic (meaning-based) search needs embeddings and arrives with Phase 3–4.
+- The processing queue is **in-process**. It survives restarts (jobs are re-queued from the database) but isn't shared across multiple server instances.
+- Pages that need JavaScript to render their content may yield little text, and those that block bots are saved as bookmarks only.
+- Files are stored on **local disk**. Move `processing/storage.js` to S3/GCS for multi-server or serverless hosting.
 
 ### Known limitations in Phase 1
 

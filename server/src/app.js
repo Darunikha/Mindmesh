@@ -9,6 +9,9 @@ import { apiLimiter } from './middleware/rateLimit.js';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
 import authRoutes from './modules/auth/auth.routes.js';
 import userRoutes from './modules/users/users.routes.js';
+import libraryRoutes from './modules/library/library.routes.js';
+import collectionRoutes from './modules/collections/collections.routes.js';
+import tagRoutes from './modules/tags/tags.routes.js';
 
 export function createApp() {
   const app = express();
@@ -23,7 +26,8 @@ export function createApp() {
       credentials: true,
     })
   );
-  app.use(express.json({ limit: '1mb' }));
+  // Notes are sent as structured JSON documents, so allow a little more than the default.
+  app.use(express.json({ limit: '2mb' }));
   app.use(cookieParser());
   if (env.NODE_ENV === 'development') app.use(morgan('dev'));
 
@@ -38,6 +42,9 @@ export function createApp() {
   app.use('/api', apiLimiter);
   app.use('/api/auth', authRoutes);
   app.use('/api/users', userRoutes);
+  app.use('/api/resources', libraryRoutes);
+  app.use('/api/collections', collectionRoutes);
+  app.use('/api/tags', tagRoutes);
 
   app.use('/api', notFoundHandler);
   app.use(errorHandler);

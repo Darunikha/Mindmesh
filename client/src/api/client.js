@@ -112,3 +112,61 @@ export const http = {
   patch: (p, body, o) => api(p, { ...o, method: 'PATCH', body }),
   del: (p, body, o) => api(p, { ...o, method: 'DELETE', body }),
 };
+
+/** Downloads a protected binary (e.g. an uploaded file) as a Blob, refreshing the token once if needed. */
+export async function fetchBlob(path, { signal } = {}) {
+  const attempt = () =>
+    fetch(`${BASE}${path}`, { credentials: 'include', signal, headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {} });
+  let res = await attempt();
+  if (res.status === 401) {
+    await refreshSession();
+    res = await attempt();
+  }
+  if (!res.ok) {
+    const data = await parse(res);
+    const e = data?.error || {};
+    throw new ApiRequestError(res.status, e.message || `Download failed (${res.status})`, e.code || 'ERROR', e.details);
+  }
+  return res.blob();
+}
+
+/**
+ * Multipart upload via XMLHttpRequest so we get real upload-progress events.
+ * Resolves with the parsed JSON body; rejects with ApiRequestError (or AbortError).
+ */
+export function uploadWithProgress(path, formData, { onProgress, signal } = {}) {
+  const send = () =>
+    new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', `${BASE}${path}`);
+      xhr.withCredentials = true;
+      if (accessToken) xhr.setRequestHeader('Authorization', `Bearer ${accessToken}`);
+      xhr.upload.onprogress = (e) => e.lengthComputable && onProgress?.(e.loaded / e.total);
+      xhr.onload = () => {
+        let data = null;
+        try {
+          data = xhr.responseText ? JSON.parse(xhr.responseText) : null;
+        } catch {
+          data = { error: { message: xhr.responseText } };
+        }
+        if (xhr.status >= 200 && xhr.status < 300) resolve(data);
+        else {
+          const e = data?.error || {};
+          reject(new ApiRequestError(xhr.status, e.message || `Upload failed (${xhr.status})`, e.code || 'ERROR', e.details));
+        }
+      };
+      xhr.onerror = () => reject(new ApiRequestError(0, 'The upload was interrupted. Check your connection and try again.', 'NETWORK'));
+      xhr.onabort = () => reject(new DOMException('Upload cancelled', 'AbortError'));
+      signal?.addEventListener('abort', () => xhr.abort(), { once: true });
+      xhr.send(formData);
+    });
+
+  return send().catch(async (err) => {
+    if (err.status === 401 && err.code === 'TOKEN_EXPIRED') {
+      await refreshSession();
+      onProgress?.(0);
+      return send();
+    }
+    throw err;
+  });
+}

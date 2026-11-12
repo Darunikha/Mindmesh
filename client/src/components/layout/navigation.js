@@ -18,8 +18,8 @@ export const NAV_SECTIONS = [
     id: 'knowledge',
     titles: { library: 'The Stacks', studio: 'Knowledge', lab: '02 / Data' },
     items: [
-      { to: '/vault', label: 'Knowledge Vault', icon: LibraryBig, phase: 2, tint: 'accent-3' },
-      { to: '/collections', label: 'Collections', icon: FolderTree, phase: 2, tint: 'accent' },
+      { to: '/vault', label: 'Knowledge Vault', icon: LibraryBig, tint: 'accent-3' },
+      { to: '/collections', label: 'Collections', icon: FolderTree, tint: 'accent' },
       { to: '/search', label: 'Smart Search', icon: Search, phase: 4, tint: 'accent-2' },
     ],
   },
