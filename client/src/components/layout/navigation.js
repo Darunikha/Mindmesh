@@ -1,4 +1,4 @@
-import { FolderTree, GraduationCap, History, House, LibraryBig, Search, Sparkles, Waypoints } from 'lucide-react';
+import { ClipboardCheck, FolderTree, GraduationCap, History, House, LibraryBig, Search, Sparkles, Waypoints } from 'lucide-react';
 
 /**
  * Single source of truth for app navigation.
@@ -13,6 +13,7 @@ export const NAV_SECTIONS = [
       { to: '/', label: 'Home', icon: House, end: true, tint: 'accent' },
       { to: '/assistant', label: 'Assistant', icon: Sparkles, tint: 'accent-2' },
       { to: '/flashcards', label: 'Review', icon: GraduationCap, tint: 'accent-3' },
+      { to: '/quiz', label: 'Quiz me', icon: ClipboardCheck, tint: 'accent-2' },
     ],
   },
   {

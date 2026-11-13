@@ -19,6 +19,7 @@ import { assertCollectionOwned } from '../collections/collections.service.js';
 import { logActivity } from '../timeline/activity.js';
 import { search as runSearch } from '../search/search.service.js';
 import { deleteAllForUser as deleteFlashcardsForUser, detachResource as detachFlashcards } from '../flashcards/flashcards.service.js';
+import { deleteAllForUser as deleteQuizzesForUser, detachResource as detachQuizzes } from '../quiz/quiz.service.js';
 
 const OPEN_LOG_INTERVAL_MS = 30 * 60 * 1000;
 import { resolveTagNames, serializeTag } from '../tags/tags.service.js';
@@ -373,6 +374,7 @@ export async function deleteResource(userId, id) {
   );
   invalidateUserVectors(userId);
   await detachFlashcards(userId, r._id);
+  await detachQuizzes(userId, r._id);
   if (r.file?.storageKey) await removeFile(r.file.storageKey);
 }
 
@@ -423,6 +425,7 @@ export async function deleteAllForUser(userId) {
     SearchHistory.deleteMany({ user: userId }),
     GraphLayout.deleteMany({ user: userId }),
     deleteFlashcardsForUser(userId),
+    deleteQuizzesForUser(userId),
   ]);
   invalidateUserVectors(userId);
   await removeUserFiles(userId);

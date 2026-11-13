@@ -39,6 +39,19 @@ registerChatProvider('fake', () => ({
   async completeJson({ prompt }) {
     calls.json.push(prompt);
     if (prompt.includes('running summary')) return { summary: 'Earlier the user discussed topic X.' };
+    if (prompt.includes('quiz questions')) {
+      return { questions: [
+        { question: 'How does backpropagation compute gradients?', reference: 'Using the chain rule, layer by layer.', passage: 1 },
+        { question: 'Invalid passage reference', reference: 'dropped', passage: 99 },
+        { question: 'What flows backwards?', reference: 'Gradients of the loss.', passage: 1 },
+      ] };
+    }
+    if (prompt.includes('Grade this answer')) {
+      const a = (prompt.match(/<learner_answer>([\s\S]*?)<\/learner_answer>/) || [])[1] || '';
+      if (a.includes('BOOM')) return null;
+      const verdict = /chain rule|gradients/i.test(a) ? 'correct' : /layer/i.test(a) ? 'partial' : 'incorrect';
+      return { verdict, feedback: `Graded as ${verdict}.` };
+    }
     if (prompt.includes('flashcards from this item')) {
       return {
         cards: [

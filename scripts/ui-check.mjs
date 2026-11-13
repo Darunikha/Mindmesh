@@ -87,6 +87,7 @@ const PAGES = (s) => [
   { name: 'graph', path: '/graph' },
   { name: 'timeline', path: '/timeline' },
   { name: 'review', path: '/flashcards' },
+  { name: 'quiz', path: '/quiz' },
   { name: 'settings', path: '/settings/ai' },
 ];
 

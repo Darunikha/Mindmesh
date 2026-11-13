@@ -18,6 +18,7 @@ import searchRoutes from './modules/search/search.routes.js';
 import graphRoutes from './modules/graph/graph.routes.js';
 import timelineRoutes from './modules/timeline/timeline.routes.js';
 import flashcardRoutes from './modules/flashcards/flashcards.routes.js';
+import quizRoutes from './modules/quiz/quiz.routes.js';
 import './ai/index.js';
 import { mountClient } from './clientServer.js';
 
@@ -59,6 +60,7 @@ export function createApp() {
   app.use('/api/graph', graphRoutes);
   app.use('/api/timeline', timelineRoutes);
   app.use('/api/flashcards', flashcardRoutes);
+  app.use('/api/quizzes', quizRoutes);
 
   app.use('/api', notFoundHandler);
   if (env.SERVE_CLIENT) mountClient(app, env.CLIENT_DIST);

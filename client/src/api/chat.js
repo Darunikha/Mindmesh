@@ -29,3 +29,11 @@ export const flashcardsApi = {
   review: (id, grade) => http.post(`/flashcards/${id}/review`, { grade }),
   generate: (resourceId, count = 8) => http.post('/flashcards/generate', { resourceId, count }),
 };
+
+export const quizApi = {
+  list: () => http.get('/quizzes'),
+  start: (body) => http.post('/quizzes', body),
+  get: (id) => http.get(`/quizzes/${id}`),
+  answer: (id, index, answer) => http.post(`/quizzes/${id}/answer`, { index, answer }),
+  makeFlashcards: (id) => http.post(`/quizzes/${id}/flashcards`, {}),
+};

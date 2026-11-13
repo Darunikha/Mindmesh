@@ -21,6 +21,8 @@ export function errorHandler(err, req, res, _next) {
     error = ApiError.badRequest('Malformed JSON body');
   } else if ((err?.status === 404 || err?.statusCode === 404) && !(err instanceof ApiError)) {
     error = ApiError.notFound();
+  } else if (typeof err?.code === 'string' && err.code.startsWith('AI_') && Number.isInteger(err.status)) {
+    error = new ApiError(err.status, err.message, err.code);
   } else if (err?.type === 'entity.too.large') {
     error = new ApiError(413, 'Request body is too large', 'PAYLOAD_TOO_LARGE');
   }

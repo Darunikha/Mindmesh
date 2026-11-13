@@ -35,6 +35,7 @@ An AI-powered personal knowledge and learning workspace: a general-purpose AI as
 | **Smart Search** | One search over titles, full text and meaning, with filters (type, collection, tags, date), sorting, highlighted passages, type-ahead suggestions and recent searches. |
 | **Knowledge Graph** | Interactive React Flow graph of items, topics (tags) and collections. Drag, zoom, search, filter, focus on neighbours, connect items by dragging, and review AI-suggested connections (accept or dismiss). |
 | **Flashcards (Review)** | Make flashcards by hand or generate them from any note, document or link with AI (answers must come from the item's own text; duplicate questions are skipped). Review with **spaced repetition** (an SM-2 style schedule): reveal, then grade Again / Hard / Good / Easy, with the next interval shown on each button, keyboard shortcuts (Space, 1–4), and "Again" cards returning later in the same session. Cards outlive their source item. Due counts appear on Home. |
+| **Quiz me** | Pick a scope (everything, a collection, or one item) and the assistant writes questions from your own text. You answer in your own words and each answer is graded against the source passage, then you see the reference answer, the source excerpt (with a link) and a note that grading is AI-made. Questions you miss or half-answer become flashcards in one click. Progress is saved, and past quizzes are listed. |
 | **Save to Vault** | One click turns an assistant answer into an editable note: the Markdown becomes rich text, your question is quoted, and cited sources are listed with links. Saving twice returns the same note. |
 | **Timeline** | A history of notes written, documents and links added, connections made, topics searched, questions asked and items revisited, with type and date filters and a 12-week activity map. |
 | **Settings** | Profile, account, theme, reduced motion, AI preferences, live AI and index status, re-indexing, library defaults, password change, sessions and sign-out-everywhere, account deletion. |
@@ -171,9 +172,9 @@ mindmesh/
 ├── server/
 │   └── src/
 │       ├── config/            env (Zod-validated), db
-│       ├── models/            User Session Resource Chunk Collection Tag Conversation Message Connection Activity SearchHistory GraphLayout Flashcard
+│       ├── models/            User Session Resource Chunk Collection Tag Conversation Message Connection Activity SearchHistory GraphLayout Flashcard Quiz
 │       ├── middleware/        auth · validate · errorHandler · rateLimit
-│       ├── modules/           auth users library collections tags chat ai search graph timeline flashcards (routes → service)
+│       ├── modules/           auth users library collections tags chat ai search graph timeline flashcards quiz (routes → service)
 │       ├── processing/        storage · fileTypes · extractors · chunker · linkFetcher · queue · processor · embedder
 │       └── ai/                providers (registry) · anthropic · embeddings · vectorSearch · vectorCache · retrieval · prompts
 ├── scripts/ui-check.mjs       Playwright + axe-core UI/accessibility check
@@ -236,7 +237,7 @@ mindmesh/
 ## Testing and quality checks
 
 ```bash
-npm test                    # API tests (81 + 3 serving tests) + component tests (18)
+npm test                    # API tests (86) + component tests (18)
 npm test -w server          # API only: node:test + supertest + in-memory MongoDB
 npm test -w client          # components only: Vitest + Testing Library (jsdom)
 npm run dev & npm run check:ui

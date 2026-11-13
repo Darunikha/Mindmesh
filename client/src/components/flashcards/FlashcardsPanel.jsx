@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { GraduationCap, Plus, Sparkles } from 'lucide-react';
+import { ClipboardCheck, GraduationCap, Plus, Sparkles } from 'lucide-react';
 import Card from '../ui/Card.jsx';
 import Button from '../ui/Button.jsx';
 import CardDialog from './CardDialog.jsx';
@@ -63,6 +63,11 @@ export default function FlashcardsPanel({ resource }) {
         <Button size="sm" variant="secondary" icon={Sparkles} loading={generating} disabled={!canGenerate} onClick={generate} title={canGenerate ? undefined : 'Available once the text has been extracted'}>
           Generate cards
         </Button>
+        {canGenerate && (
+          <Button size="sm" variant="secondary" icon={ClipboardCheck} to={`/quiz?resource=${resource.id}`}>
+            Quiz me on this
+          </Button>
+        )}
         <Button size="sm" variant="ghost" icon={Plus} onClick={() => setAdding(true)}>
           Add a card
         </Button>
