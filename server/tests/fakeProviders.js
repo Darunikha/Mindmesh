@@ -39,6 +39,15 @@ registerChatProvider('fake', () => ({
   async completeJson({ prompt }) {
     calls.json.push(prompt);
     if (prompt.includes('running summary')) return { summary: 'Earlier the user discussed topic X.' };
+    if (prompt.includes('flashcards from this item')) {
+      return {
+        cards: [
+          { front: 'What does backpropagation compute?', back: 'Gradients of the loss.' },
+          { front: 'what does backpropagation compute?', back: 'Duplicate question.' },
+          { front: 'Which rule does it rely on?', back: 'The chain rule.' },
+        ],
+      };
+    }
     if (prompt.includes('numbered pair')) {
       const lines = prompt.split('\n');
       const n = lines.filter((l) => /^\d+\. A:/.test(l)).length;

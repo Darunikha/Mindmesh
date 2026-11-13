@@ -19,6 +19,8 @@ export function errorHandler(err, req, res, _next) {
     error = ApiError.conflict('A record with these details already exists', 'DUPLICATE');
   } else if (err?.type === 'entity.parse.failed') {
     error = ApiError.badRequest('Malformed JSON body');
+  } else if ((err?.status === 404 || err?.statusCode === 404) && !(err instanceof ApiError)) {
+    error = ApiError.notFound();
   } else if (err?.type === 'entity.too.large') {
     error = new ApiError(413, 'Request body is too large', 'PAYLOAD_TOO_LARGE');
   }

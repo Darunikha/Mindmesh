@@ -10,7 +10,7 @@ import Alert from '../../components/ui/Alert.jsx';
 import Dialog from '../../components/ui/Dialog.jsx';
 import Skeleton from '../../components/ui/Skeleton.jsx';
 import EmptyState from '../../components/ui/EmptyState.jsx';
-import { aiApi, conversationsApi } from '../../api/chat.js';
+import { aiApi, conversationsApi, learningApi } from '../../api/chat.js';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { useTheme } from '../../context/ThemeContext.jsx';
 import { useToast } from '../../context/ToastContext.jsx';
@@ -268,6 +268,19 @@ export default function AssistantPage() {
     send(prompt, location.state?.mode);
   }, [location, chatReady, id, navigate, send]);
 
+  const saveAnswer = useCallback(
+    async (message) => {
+      try {
+        const { resource, created } = await learningApi.saveAnswer(message.conversationId || conversation?.id, message.id);
+        setMessages((ms) => ms.map((m) => (m.id === message.id ? { ...m, savedResourceId: resource.id } : m)));
+        toast.success(created ? `Saved to your vault as “${resource.title}”` : 'This answer is already in your vault');
+      } catch (err) {
+        toast.error(err.message);
+      }
+    },
+    [conversation, toast]
+  );
+
   const changeMode = (m) => {
     setMode(m);
     if (conversation) conversationsApi.update(conversation.id, { mode: m }).catch(() => {});
@@ -391,6 +404,7 @@ export default function AssistantPage() {
                 canRegenerate={Boolean(chatReady) && !stream && m.id === lastAssistant?.id && m.kind !== 'notice' && messages.at(-1)?.id === m.id && !m.id.startsWith('tmp-')}
                 onRegenerate={() => regenerate(m)}
                 onFollowUp={(f) => send(f)}
+                onSave={saveAnswer}
               />
             ))}
           </div>

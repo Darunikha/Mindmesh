@@ -86,6 +86,7 @@ const PAGES = (s) => [
   { name: 'search', path: '/search?q=backpropagation' },
   { name: 'graph', path: '/graph' },
   { name: 'timeline', path: '/timeline' },
+  { name: 'review', path: '/flashcards' },
   { name: 'settings', path: '/settings/ai' },
 ];
 

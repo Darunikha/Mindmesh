@@ -46,6 +46,8 @@ const messageSchema = new mongoose.Schema(
       note: { type: String, default: null },
     },
     followUps: { type: [String], default: [] },
+    /** The note created from this answer with "Save to Vault", so saving twice doesn't duplicate it. */
+    savedResourceId: { type: ObjectId, ref: 'Resource', default: null },
     truncated: { type: Boolean, default: false },
     model: { type: String, default: null },
     usage: {

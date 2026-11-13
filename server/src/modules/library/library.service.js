@@ -18,6 +18,7 @@ import { enqueue, indexNote } from '../../processing/processor.js';
 import { assertCollectionOwned } from '../collections/collections.service.js';
 import { logActivity } from '../timeline/activity.js';
 import { search as runSearch } from '../search/search.service.js';
+import { deleteAllForUser as deleteFlashcardsForUser, detachResource as detachFlashcards } from '../flashcards/flashcards.service.js';
 
 const OPEN_LOG_INTERVAL_MS = 30 * 60 * 1000;
 import { resolveTagNames, serializeTag } from '../tags/tags.service.js';
@@ -371,6 +372,7 @@ export async function deleteResource(userId, id) {
     { arrayFilters: [{ 'c.resourceId': r._id }] }
   );
   invalidateUserVectors(userId);
+  await detachFlashcards(userId, r._id);
   if (r.file?.storageKey) await removeFile(r.file.storageKey);
 }
 
@@ -420,6 +422,7 @@ export async function deleteAllForUser(userId) {
     Activity.deleteMany({ user: userId }),
     SearchHistory.deleteMany({ user: userId }),
     GraphLayout.deleteMany({ user: userId }),
+    deleteFlashcardsForUser(userId),
   ]);
   invalidateUserVectors(userId);
   await removeUserFiles(userId);

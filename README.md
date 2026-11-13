@@ -34,6 +34,8 @@ An AI-powered personal knowledge and learning workspace: a general-purpose AI as
 | **AI assistant** | Streaming chat with **General AI** (model knowledge) and **My Knowledge** (retrieval-augmented, with inline citations to your sources), switchable mid-conversation. Conversation history, rename and delete, copy, regenerate, stop, follow-up suggestions, Markdown and highlighted code. |
 | **Smart Search** | One search over titles, full text and meaning, with filters (type, collection, tags, date), sorting, highlighted passages, type-ahead suggestions and recent searches. |
 | **Knowledge Graph** | Interactive React Flow graph of items, topics (tags) and collections. Drag, zoom, search, filter, focus on neighbours, connect items by dragging, and review AI-suggested connections (accept or dismiss). |
+| **Flashcards (Review)** | Make flashcards by hand or generate them from any note, document or link with AI (answers must come from the item's own text; duplicate questions are skipped). Review with **spaced repetition** (an SM-2 style schedule): reveal, then grade Again / Hard / Good / Easy, with the next interval shown on each button, keyboard shortcuts (Space, 1–4), and "Again" cards returning later in the same session. Cards outlive their source item. Due counts appear on Home. |
+| **Save to Vault** | One click turns an assistant answer into an editable note: the Markdown becomes rich text, your question is quoted, and cited sources are listed with links. Saving twice returns the same note. |
 | **Timeline** | A history of notes written, documents and links added, connections made, topics searched, questions asked and items revisited, with type and date filters and a 12-week activity map. |
 | **Settings** | Profile, account, theme, reduced motion, AI preferences, live AI and index status, re-indexing, library defaults, password change, sessions and sign-out-everywhere, account deletion. |
 
@@ -42,7 +44,7 @@ An AI-powered personal knowledge and learning workspace: a general-purpose AI as
 | Layer | Technologies |
 | --- | --- |
 | Frontend | React 19, Vite 8, Tailwind CSS 4, React Router 7, Framer Motion, Lucide icons, TipTap 3 (editor), React Flow 12 + d3-force (graph), react-markdown + highlight.js |
-| Backend | Node.js 20+ (tested on 24), Express 5, Mongoose 9, Zod 4, JWT, bcrypt, helmet, express-rate-limit, multer |
+| Backend | Node.js 20+ (tested on 24), Express 5, Mongoose 9, Zod 4, JWT, bcrypt, helmet, express-rate-limit, multer, marked |
 | Database | MongoDB (Atlas recommended), with optional Atlas Vector Search |
 | AI | Anthropic Claude via `@anthropic-ai/sdk` (default `claude-opus-5-5`); Voyage AI or OpenAI embeddings; provider adapters are swappable |
 | Documents | pdfjs-dist (PDF, per page), mammoth (DOCX), cheerio (HTML), undici (link fetching) |
@@ -86,6 +88,7 @@ All configuration lives in `server/.env`. It is validated at boot, and the serve
 | `PORT` | `4000` | API port |
 | `CLIENT_ORIGIN` | `http://localhost:5173` | Comma-separated CORS allow-list |
 | `TRUST_PROXY` | `false` | Set to `true` behind a reverse proxy (for correct client IPs and rate limits) |
+| `SERVE_CLIENT` / `CLIENT_DIST` | `false` / `../client/dist` | Serve the built web app from the API server (single origin; use in production after `npm run build`) |
 | `API_RATE_LIMIT_PER_MIN` | `1200` | General per-IP ceiling. Sign-in, uploads, AI and other sensitive routes have stricter limits. |
 | `MONGODB_URI` | — | MongoDB connection string |
 | `USE_IN_MEMORY_DB` | `false` | Dev only: an ephemeral database. **Data is lost on restart.** |
@@ -167,9 +170,9 @@ mindmesh/
 ├── server/
 │   └── src/
 │       ├── config/            env (Zod-validated), db
-│       ├── models/            User Session Resource Chunk Collection Tag Conversation Message Connection Activity SearchHistory GraphLayout
+│       ├── models/            User Session Resource Chunk Collection Tag Conversation Message Connection Activity SearchHistory GraphLayout Flashcard
 │       ├── middleware/        auth · validate · errorHandler · rateLimit
-│       ├── modules/           auth users library collections tags chat ai search graph timeline (routes → service)
+│       ├── modules/           auth users library collections tags chat ai search graph timeline flashcards (routes → service)
 │       ├── processing/        storage · fileTypes · extractors · chunker · linkFetcher · queue · processor · embedder
 │       └── ai/                providers (registry) · anthropic · embeddings · vectorSearch · vectorCache · retrieval · prompts
 ├── scripts/ui-check.mjs       Playwright + axe-core UI/accessibility check
@@ -232,7 +235,7 @@ mindmesh/
 ## Testing and quality checks
 
 ```bash
-npm test                    # API tests (71) + component tests (18)
+npm test                    # API tests (81 + 3 serving tests) + component tests (18)
 npm test -w server          # API only: node:test + supertest + in-memory MongoDB
 npm test -w client          # components only: Vitest + Testing Library (jsdom)
 npm run dev & npm run check:ui
@@ -244,9 +247,28 @@ npm run dev & npm run check:ui
 
 ## Deployment notes
 
-- Build the client (`npm run build`) and serve `client/dist` from a static host or reverse proxy. Route `/api` to the Node server **on the same origin**, so the `SameSite=Strict` refresh cookie works, and send unknown paths to `index.html`.
-- Set `NODE_ENV=production`, use HTTPS (cookies become `Secure`), set `TRUST_PROXY=true` behind a proxy, and set `CLIENT_ORIGIN` to your site.
+**The simplest setup is one process serving everything.** With `SERVE_CLIENT=true`, the API server also serves the built web app from `client/dist`, so the app and API share one origin (which the `SameSite=Strict` refresh cookie needs). It adds a strict Content-Security-Policy (the one inline script is allowed by its SHA-256 hash, not `unsafe-inline`), long-lived caching for hashed assets, and falls back to the app shell for client routes such as `/vault/123`.
+
+```bash
+npm run build
+cd server
+NODE_ENV=production SERVE_CLIENT=true node src/index.js     # plus your .env values
+```
+
+**Docker:** the included `Dockerfile` builds the frontend and runs the combined server as a non-root user, with a health check on `/api/health`.
+
+```bash
+docker build -t mindmesh .
+docker run -p 4000:4000 --env-file server/.env -v mindmesh-uploads:/app/server/uploads mindmesh
+```
+
+The Docker build is **untested** here because Docker isn't installed on the development machine. The same steps run without Docker as shown above.
+
+- Use a hosted MongoDB (Atlas) via `MONGODB_URI`. `USE_IN_MEMORY_DB` is refused in production.
+- Set `NODE_ENV=production`, serve over HTTPS (cookies become `Secure`), set `TRUST_PROXY=true` behind a proxy, and set `CLIENT_ORIGIN` to your site's address.
+- Persist `UPLOAD_DIR` on a volume, or replace the storage module with an object store.
 - Run one API instance, or move the in-process queues and vector cache to shared infrastructure first (see limitations).
+- **CI:** `.github/workflows/ci.yml` runs the API tests, the component tests and a production build on every push and pull request.
 
 ## Known limitations
 

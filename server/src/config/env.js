@@ -26,6 +26,12 @@ const schema = z.object({
   BCRYPT_ROUNDS: z.coerce.number().int().min(4).max(15).default(12),
   TRUST_PROXY: bool,
   /** Requests per minute per IP across the whole API. */
+  /** Serve the built React app from this server (single origin in production). */
+  SERVE_CLIENT: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((v) => v === 'true'),
+  CLIENT_DIST: z.string().default('../client/dist'),
   API_RATE_LIMIT_PER_MIN: z.coerce.number().int().min(60).max(100000).default(1200),
 
   // Phase 2: knowledge library

@@ -17,7 +17,9 @@ import aiRoutes from './modules/ai/ai.routes.js';
 import searchRoutes from './modules/search/search.routes.js';
 import graphRoutes from './modules/graph/graph.routes.js';
 import timelineRoutes from './modules/timeline/timeline.routes.js';
+import flashcardRoutes from './modules/flashcards/flashcards.routes.js';
 import './ai/index.js';
+import { mountClient } from './clientServer.js';
 
 export function createApp() {
   const app = express();
@@ -56,8 +58,10 @@ export function createApp() {
   app.use('/api/search', searchRoutes);
   app.use('/api/graph', graphRoutes);
   app.use('/api/timeline', timelineRoutes);
+  app.use('/api/flashcards', flashcardRoutes);
 
   app.use('/api', notFoundHandler);
+  if (env.SERVE_CLIENT) mountClient(app, env.CLIENT_DIST);
   app.use(errorHandler);
 
   return app;

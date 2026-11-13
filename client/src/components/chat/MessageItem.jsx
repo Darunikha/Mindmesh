@@ -1,5 +1,6 @@
 import { memo, useState } from 'react';
-import { AlertTriangle, BookOpenCheck, Brain, Check, Copy, Info, LibraryBig, Loader2, RotateCcw, Search, Square } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { BookmarkCheck, BookmarkPlus, AlertTriangle, BookOpenCheck, Brain, Check, Copy, Info, LibraryBig, Loader2, RotateCcw, Search, Square } from 'lucide-react';
 import Markdown from './Markdown.jsx';
 import SourceCards from './SourceCards.jsx';
 import { useTheme } from '../../context/ThemeContext.jsx';
@@ -67,7 +68,8 @@ function ActionButton({ icon: Icon, label, onClick, active }) {
 }
 
 /** One chat message. Assistant messages carry grounding info, citations and actions. */
-function MessageItem({ message, streaming, phase, isLast, onRegenerate, onFollowUp, canRegenerate }) {
+function MessageItem({ message, streaming, phase, isLast, onRegenerate, onFollowUp, canRegenerate, onSave }) {
+  const [saving, setSaving] = useState(false);
   const { theme } = useTheme();
   const [copied, setCopied] = useState(false);
   const [highlight, setHighlight] = useState(null);
@@ -173,6 +175,27 @@ function MessageItem({ message, streaming, phase, isLast, onRegenerate, onFollow
         <div className="mt-3 flex flex-wrap items-center gap-1 opacity-100 sm:opacity-60 sm:group-hover/msg:opacity-100 sm:focus-within:opacity-100">
           <ActionButton icon={copied ? Check : Copy} label={copied ? 'Copied' : 'Copy'} onClick={copy} active={copied} />
           {canRegenerate && !failed && <ActionButton icon={RotateCcw} label="Regenerate" onClick={onRegenerate} />}
+          {onSave && ['complete', 'stopped'].includes(message.status) && !message.id.startsWith('tmp-') &&
+            (message.savedResourceId ? (
+              <Link to={`/vault/${message.savedResourceId}`} className="flex h-7 items-center gap-1 rounded-control px-2 font-ui text-xs text-success hover:bg-sunken">
+                <BookmarkCheck size={13} aria-hidden />
+                <span>Saved, open note</span>
+              </Link>
+            ) : (
+              <ActionButton
+                icon={BookmarkPlus}
+                label={saving ? 'Saving…' : 'Save to Vault'}
+                onClick={async () => {
+                  if (saving) return;
+                  setSaving(true);
+                  try {
+                    await onSave(message);
+                  } finally {
+                    setSaving(false);
+                  }
+                }}
+              />
+            ))}
         </div>
       )}
 

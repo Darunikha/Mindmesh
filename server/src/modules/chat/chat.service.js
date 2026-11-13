@@ -2,6 +2,9 @@ import mongoose from 'mongoose';
 import Conversation from '../../models/Conversation.js';
 import Message from '../../models/Message.js';
 import ApiError from '../../utils/ApiError.js';
+import Resource from '../../models/Resource.js';
+import { markdownToDoc } from '../../processing/markdownToDoc.js';
+import { createNote } from '../library/library.service.js';
 import { escapeRegex } from '../../utils/validators.js';
 
 export function serializeConversation(c) {
@@ -47,6 +50,7 @@ export function serializeMessage(m) {
     retrieval: m.retrieval?.searched || m.retrieval?.note ? m.retrieval : null,
     followUps: m.followUps || [],
     truncated: Boolean(m.truncated),
+    savedResourceId: m.savedResourceId ? String(m.savedResourceId) : null,
     model: m.model,
     createdAt: m.createdAt,
     updatedAt: m.updatedAt,
@@ -125,3 +129,42 @@ export function releaseLock(id) {
 }
 
 export const oid = (v) => new mongoose.Types.ObjectId(String(v));
+
+/**
+ * Saves an assistant answer as a note: the Markdown becomes rich text, cited sources are
+ * listed with links to the original items, and repeated saves return the same note.
+ */
+export async function saveAnswerAsNote(userId, conversationId, messageId, { title, collectionId, tags } = {}) {
+  const conversation = await findOwnedConversation(userId, conversationId);
+  const message = await Message.findOne({ _id: messageId, conversation: conversation._id, user: userId });
+  if (!message || message.role !== 'assistant') throw ApiError.notFound('Answer not found');
+  if (message.kind === 'notice' || !message.content.trim() || !['complete', 'stopped'].includes(message.status)) {
+    throw ApiError.badRequest('Only completed answers can be saved');
+  }
+  if (message.savedResourceId && (await Resource.exists({ _id: message.savedResourceId, user: userId }))) {
+    const existing = await Resource.findById(message.savedResourceId, { title: 1 }).lean();
+    return { resource: { id: String(existing._id), title: existing.title }, created: false };
+  }
+
+  const question = await Message.findOne({ conversation: conversation._id, role: 'user', createdAt: { $lte: message.createdAt } })
+    .sort({ createdAt: -1, _id: -1 })
+    .lean();
+  const cited = (message.citations || []).filter((c) => c.cited && !c.resourceDeleted);
+  let markdown = message.content;
+  if (question) markdown = `> ${question.content.replace(/\n/g, '\n> ')}\n\n${markdown}`;
+  if (cited.length) {
+    markdown += `\n\n## Sources\n\n${cited
+      .map((c) => `${c.n}. [${c.title.replace(/[[\]]/g, '')}](/vault/${c.resourceId})${c.page ? ` (page ${c.page})` : ''}`)
+      .join('\n')}`;
+  }
+  const defaultTitle = conversation.title && conversation.title !== 'New conversation' ? conversation.title : (question?.content || 'Saved answer');
+  const note = await createNote(userId, {
+    title: (title || defaultTitle).replace(/\s+/g, ' ').trim().slice(0, 300),
+    content: markdownToDoc(markdown),
+    collectionId,
+    tags: tags?.length ? tags : ['from assistant'],
+  });
+  message.savedResourceId = note.id;
+  await message.save();
+  return { resource: { id: note.id, title: note.title }, created: true };
+}

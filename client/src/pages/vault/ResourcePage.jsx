@@ -7,6 +7,7 @@ import Skeleton from '../../components/ui/Skeleton.jsx';
 import EmptyState from '../../components/ui/EmptyState.jsx';
 import DetailsPanel from '../../components/library/DetailsPanel.jsx';
 import RelatedPanel from '../../components/library/RelatedPanel.jsx';
+import FlashcardsPanel from '../../components/flashcards/FlashcardsPanel.jsx';
 import { StatusBadge, TypeBadge } from '../../components/library/Badges.jsx';
 import { libraryApi } from '../../api/library.js';
 import { useLibrary } from '../../context/LibraryContext.jsx';
@@ -199,6 +200,7 @@ export default function ResourcePage() {
         </div>
         <aside aria-label="Item details" className="min-w-0 space-y-4">
           <RelatedPanel resourceId={resource.id} />
+          <FlashcardsPanel resource={resource} />
           <DetailsPanel resource={resource} onChange={(u) => setResource((prev) => ({ ...u, note: u.note ? { ...u.note, content: prev.note?.content ?? u.note.content } : undefined }))} />
         </aside>
       </div>

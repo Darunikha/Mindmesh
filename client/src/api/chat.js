@@ -14,3 +14,18 @@ export const aiApi = {
   status: () => http.get('/ai/status'),
   reindex: (force = false) => http.post('/ai/reindex', { force }),
 };
+
+export const learningApi = {
+  saveAnswer: (conversationId, messageId, body = {}) => http.post(`/conversations/${conversationId}/messages/${messageId}/save`, body),
+};
+
+export const flashcardsApi = {
+  list: (params = {}) => http.get(`/flashcards${qs(params)}`),
+  stats: () => http.get('/flashcards/stats'),
+  due: (params = {}) => http.get(`/flashcards/due${qs(params)}`),
+  create: (body) => http.post('/flashcards', body),
+  update: (id, body) => http.patch(`/flashcards/${id}`, body),
+  remove: (id) => http.del(`/flashcards/${id}`),
+  review: (id, grade) => http.post(`/flashcards/${id}/review`, { grade }),
+  generate: (resourceId, count = 8) => http.post('/flashcards/generate', { resourceId, count }),
+};

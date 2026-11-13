@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowRight, Check, Compass, FileText, Link2, MessageSquareText, Palette, Plus, Sparkles, Upload } from 'lucide-react';
+import { ArrowRight, Check, Compass, FileText, GraduationCap, Link2, MessageSquareText, Palette, Plus, Sparkles, Upload } from 'lucide-react';
 import { libraryApi } from '../api/library.js';
 import { searchApi } from '../api/discovery.js';
-import { conversationsApi } from '../api/chat.js';
+import { conversationsApi, flashcardsApi } from '../api/chat.js';
 import { useToast } from '../context/ToastContext.jsx';
 import { TypeBadge } from '../components/library/Badges.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
@@ -99,6 +99,7 @@ export default function HomePage() {
   const [overview, setOverview] = useState(null);
   const [recentSearches, setRecentSearches] = useState(null);
   const [hasConversations, setHasConversations] = useState(false);
+  const [cardStats, setCardStats] = useState(null);
   const [overviewError, setOverviewError] = useState(null);
   const [creating, setCreating] = useState(false);
   const navigate = useNavigate();
@@ -113,6 +114,10 @@ export default function HomePage() {
     conversationsApi
       .list({ limit: 10 })
       .then((d) => alive && setHasConversations(d.conversations.some((c) => c.messageCount > 0)))
+      .catch(() => {});
+    flashcardsApi
+      .stats()
+      .then((d) => alive && setCardStats(d))
       .catch(() => {});
     searchApi
       .recent()
@@ -255,6 +260,13 @@ export default function HomePage() {
               <QuickAction icon={Upload} label="Upload a document" hint="PDF, Word, text, Markdown…" to="/vault?upload=1" tone="accent-3" />
               <QuickAction icon={Link2} label="Save a link" hint="Keep a web page and its text" to="/vault?link=1" tone="accent-2" />
               <QuickAction icon={MessageSquareText} label="Start a conversation" hint="General AI or My Knowledge" to="/assistant" tone="accent-2" />
+              <QuickAction
+                icon={GraduationCap}
+                label="Review flashcards"
+                hint={cardStats ? (cardStats.due ? `${cardStats.due} card${cardStats.due === 1 ? '' : 's'} due now` : cardStats.total ? 'Nothing due right now' : 'Make cards from your notes') : 'Spaced repetition'}
+                to="/flashcards"
+                tone="accent-3"
+              />
             </div>
           </Card>
         </motion.div>

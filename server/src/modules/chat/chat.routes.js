@@ -4,7 +4,7 @@ import rateLimit from 'express-rate-limit';
 import env from '../../config/env.js';
 import { requireAuth } from '../../middleware/auth.js';
 import { validate } from '../../middleware/validate.js';
-import { objectId, objectIdParams } from '../../utils/validators.js';
+import { nullableObjectId, objectId, objectIdParams, tagNames } from '../../utils/validators.js';
 import ApiError from '../../utils/ApiError.js';
 import Message from '../../models/Message.js';
 import { CHAT_MODES } from '../../models/Conversation.js';
@@ -95,6 +95,19 @@ router.post('/:id/messages', generationLimiter, validate({ params: objectIdParam
 });
 
 /** Replaces the latest assistant answer with a new one (optionally in another mode). */
+/** Saves an answer to the Knowledge Vault as an editable note. */
+router.post(
+  '/:id/messages/:messageId/save',
+  validate({
+    params: msgParams,
+    body: z.object({ title: z.string().trim().min(1).max(300).optional(), collectionId: nullableObjectId.optional(), tags: tagNames.optional() }).strict(),
+  }),
+  async (req, res) => {
+    const result = await service.saveAnswerAsNote(req.user._id, req.params.id, req.params.messageId, req.body);
+    res.status(result.created ? 201 : 200).json(result);
+  }
+);
+
 router.post('/:id/messages/:messageId/regenerate', generationLimiter, validate({ params: msgParams, body: regenSchema }), async (req, res) => {
   const provider = chatProviderOrThrow();
   const conversation = await service.acquireLock(req.user._id, req.params.id);

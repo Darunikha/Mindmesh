@@ -20,6 +20,7 @@ const AssistantPage = lazy(() => import('./pages/assistant/AssistantPage.jsx'));
 const SearchPage = lazy(() => import('./pages/SearchPage.jsx'));
 const GraphPage = lazy(() => import('./pages/graph/GraphPage.jsx'));
 const TimelinePage = lazy(() => import('./pages/TimelinePage.jsx'));
+const FlashcardsPage = lazy(() => import('./pages/FlashcardsPage.jsx'));
 
 const page = (el) => (
   <Suspense
@@ -64,6 +65,7 @@ export default function App() {
           <Route path="/search" element={page(<SearchPage />)} />
           <Route path="/graph" element={page(<GraphPage />)} />
           <Route path="/timeline" element={page(<TimelinePage />)} />
+          <Route path="/flashcards" element={page(<FlashcardsPage />)} />
         </Route>
       </Route>
 
