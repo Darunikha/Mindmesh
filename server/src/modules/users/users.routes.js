@@ -14,6 +14,7 @@ router.patch('/me', validate({ body: v.updateProfileSchema }), ctrl.updateMe);
 router.patch('/me/preferences', validate({ body: v.updatePreferencesSchema }), ctrl.updatePreferences);
 router.post('/me/onboarding', validate({ body: v.onboardingSchema }), ctrl.completeOnboarding);
 router.post('/me/password', sensitiveLimiter, validate({ body: v.changePasswordSchema }), ctrl.changePassword);
+router.get('/me/export', sensitiveLimiter, ctrl.exportMe);
 router.get('/me/sessions', ctrl.listSessions);
 router.delete('/me/sessions/:id', validate({ params: v.sessionIdParams }), ctrl.revokeSession);
 router.delete('/me', sensitiveLimiter, validate({ body: v.deleteAccountSchema }), ctrl.deleteMe);

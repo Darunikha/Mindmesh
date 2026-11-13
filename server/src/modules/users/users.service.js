@@ -1,4 +1,12 @@
 import User from '../../models/User.js';
+import Resource from '../../models/Resource.js';
+import Chunk from '../../models/Chunk.js';
+import Collection from '../../models/Collection.js';
+import Tag from '../../models/Tag.js';
+import Flashcard from '../../models/Flashcard.js';
+import Conversation from '../../models/Conversation.js';
+import Message from '../../models/Message.js';
+import Connection from '../../models/Connection.js';
 import Session from '../../models/Session.js';
 import ApiError from '../../utils/ApiError.js';
 import { hashPassword, revokeAllSessions, verifyPassword } from '../auth/auth.service.js';
@@ -89,4 +97,61 @@ export async function deleteAccount(userId, password) {
   await deleteChatsForUser(userId);
   await Session.deleteMany({ user: userId });
   await User.deleteOne({ _id: userId });
+}
+
+/**
+ * Everything the user owns, as one JSON document (notes as rich-text JSON, extracted text,
+ * collections, tags, flashcards, conversations). Embedding vectors and password data are
+ * excluded; uploaded files are listed by name but not inlined.
+ */
+export async function exportData(userId) {
+  const user = await User.findById(userId).lean();
+  if (!user) throw ApiError.notFound('Account not found');
+  const [resources, chunks, collections, tags, cards, conversations, messages, connections] = await Promise.all([
+    Resource.find({ user: userId }).lean(),
+    Chunk.find({ user: userId }, { resource: 1, index: 1, page: 1, heading: 1, text: 1 }).sort({ resource: 1, index: 1 }).lean(),
+    Collection.find({ user: userId }).lean(),
+    Tag.find({ user: userId }).lean(),
+    Flashcard.find({ user: userId }).lean(),
+    Conversation.find({ user: userId }).lean(),
+    Message.find({ user: userId }).sort({ createdAt: 1 }).lean(),
+    Connection.find({ user: userId, status: 'accepted' }).lean(),
+  ]);
+  const tagName = new Map(tags.map((t) => [String(t._id), t.name]));
+  const textBy = new Map();
+  for (const c of chunks) {
+    if (!textBy.has(String(c.resource))) textBy.set(String(c.resource), []);
+    textBy.get(String(c.resource)).push(c.text);
+  }
+  return {
+    exportedAt: new Date().toISOString(),
+    format: 'mindmesh-export-v1',
+    profile: { name: user.name, email: user.email, bio: user.bio, interests: user.interests, preferences: user.preferences, createdAt: user.createdAt },
+    collections: collections.map((c) => ({ id: String(c._id), name: c.name, description: c.description, parentId: c.parent ? String(c.parent) : null })),
+    tags: tags.map((t) => t.name),
+    resources: resources.map((r) => ({
+      id: String(r._id),
+      type: r.type,
+      title: r.title,
+      createdAt: r.createdAt,
+      updatedAt: r.updatedAt,
+      pinned: r.pinned,
+      collectionId: r.collectionId ? String(r.collectionId) : null,
+      tags: (r.tags || []).map((t) => tagName.get(String(t))).filter(Boolean),
+      ...(r.type === 'note' ? { content: r.note?.content } : {}),
+      ...(r.type === 'document' ? { file: { name: r.file?.originalName, size: r.file?.size } } : {}),
+      ...(r.type === 'link' ? { url: r.link?.url, description: r.link?.description } : {}),
+      extractedText: (textBy.get(String(r._id)) || []).join('\n\n'),
+    })),
+    connections: connections.map((c) => ({ a: String(c.a), b: String(c.b), label: c.label, kind: c.kind })),
+    flashcards: cards.map((c) => ({ front: c.front, back: c.back, resourceId: c.resource ? String(c.resource) : null, reviewCount: c.reviewCount, dueAt: c.dueAt })),
+    conversations: conversations.map((c) => ({
+      id: String(c._id),
+      title: c.title,
+      createdAt: c.createdAt,
+      messages: messages
+        .filter((m) => String(m.conversation) === String(c._id))
+        .map((m) => ({ role: m.role, mode: m.mode, content: m.content, at: m.createdAt, sources: (m.citations || []).filter((x) => x.cited).map((x) => ({ title: x.title, page: x.page })) })),
+    })),
+  };
 }

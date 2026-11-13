@@ -12,7 +12,8 @@
     "build": "npm run build -w client",
     "test": "npm test -w server && npm test -w client",
     "lint": "npm run lint -w client",
-    "check:ui": "node scripts/ui-check.mjs"
+    "check:ui": "node scripts/ui-check.mjs",
+    "start": "npm run build && npm run start:prod -w server"
   },
   "devDependencies": {
     "axe-core": "^4.14.0",

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Trash2 } from 'lucide-react';
+import { Download, Trash2 } from 'lucide-react';
+import { fetchBlob } from '../../api/client.js';
 import Card, { CardHeader } from '../../components/ui/Card.jsx';
 import Button from '../../components/ui/Button.jsx';
 import Dialog from '../../components/ui/Dialog.jsx';
@@ -30,6 +31,7 @@ export default function AccountSection() {
   const [errors, setErrors] = useState({});
   const [error, setError] = useState(null);
   const [deleting, setDeleting] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   const close = () => {
     setOpen(false);
@@ -56,6 +58,26 @@ export default function AccountSection() {
     }
   };
 
+  const downloadExport = async () => {
+    setExporting(true);
+    try {
+      const blob = await fetchBlob('/users/me/export');
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `mindmesh-export-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      toast.success('Your data has been downloaded.');
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setExporting(false);
+    }
+  };
+
   return (
     <>
       <Card className="p-5 sm:p-6">
@@ -69,6 +91,16 @@ export default function AccountSection() {
           <Row label="Last sign-in">{relativeTime(user.lastLoginAt)}</Row>
           <Row label="Password last changed">{user.passwordChangedAt ? relativeTime(user.passwordChangedAt) : 'Never'}</Row>
         </dl>
+      </Card>
+
+      <Card className="p-5 sm:p-6">
+        <CardHeader eyebrow="Your data" title="Download everything" />
+        <p className="mt-2 max-w-xl font-ui text-sm text-ink-muted">
+          A single JSON file with your notes (including their text), extracted document text, link details, collections, tags, flashcards, connections and conversations. Uploaded files themselves are listed by name but not included, and passwords are never exported.
+        </p>
+        <Button variant="secondary" icon={Download} className="mt-4" loading={exporting} onClick={downloadExport}>
+          Download my data
+        </Button>
       </Card>
 
       <Card className="border-danger/30 p-5 sm:p-6">

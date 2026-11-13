@@ -158,3 +158,28 @@ describe('save answer to vault', () => {
     assert.equal((await u.post(`/api/conversations/${conv.id}/messages/${question.id}/save`, {})).status, 404, 'only answers can be saved');
   });
 });
+
+describe('data export', () => {
+  it('exports everything the user owns, and nothing from other users', async () => {
+    const u = await makeUser(ctx.app);
+    const other = await makeUser(ctx.app);
+    const col = (await u.post('/api/collections', { name: 'Course' })).body.collection;
+    const n = (await u.post('/api/resources/notes', { title: 'Mine', collectionId: col.id, tags: ['t1'], content: doc('Exportable text here.') })).body.resource;
+    await u.post('/api/flashcards', { front: 'Q', back: 'A', resourceId: n.id });
+    await other.post('/api/resources/notes', { title: 'Not yours', content: doc('secret') });
+    await u.post('/api/conversations', { title: 'Chat' });
+
+    const res = await u.get('/api/users/me/export');
+    assert.equal(res.status, 200);
+    assert.match(res.headers['content-disposition'], /attachment; filename="mindmesh-export.json"/);
+    assert.equal(res.body.format, 'mindmesh-export-v1');
+    assert.deepEqual(res.body.resources.map((r) => r.title), ['Mine']);
+    assert.equal(res.body.resources[0].extractedText, 'Exportable text here.');
+    assert.deepEqual(res.body.resources[0].tags, ['t1']);
+    assert.equal(res.body.flashcards.length, 1);
+    assert.equal(res.body.conversations.length, 1);
+    const text = JSON.stringify(res.body);
+    assert.ok(!text.includes('passwordHash') && !text.includes('"embedding"') && !text.includes('secret'));
+    assert.equal((await request(ctx.app).get('/api/users/me/export')).status, 401);
+  });
+});

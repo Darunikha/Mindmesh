@@ -74,6 +74,7 @@ Generate each secret with `node -e "console.log(require('crypto').randomBytes(48
 | --- | --- |
 | `npm run dev` | Runs the API (auto-restart) and the Vite dev server together |
 | `npm test` | Runs the API tests, then the frontend component tests |
+| `npm start` | Production mode: builds the frontend, then serves it and the API from one server |
 | `npm run build` | Builds the frontend to `client/dist` |
 | `npm run check:ui` | Visual, responsive and accessibility check (needs `npm run dev` running; see [Testing](#testing-and-quality-checks)) |
 | `npm run vector-index -w server` | Creates the Atlas Vector Search index |
@@ -250,9 +251,7 @@ npm run dev & npm run check:ui
 **The simplest setup is one process serving everything.** With `SERVE_CLIENT=true`, the API server also serves the built web app from `client/dist`, so the app and API share one origin (which the `SameSite=Strict` refresh cookie needs). It adds a strict Content-Security-Policy (the one inline script is allowed by its SHA-256 hash, not `unsafe-inline`), long-lived caching for hashed assets, and falls back to the app shell for client routes such as `/vault/123`.
 
 ```bash
-npm run build
-cd server
-NODE_ENV=production SERVE_CLIENT=true node src/index.js     # plus your .env values
+npm start        # builds the web app, then serves app + API together on PORT (default 4000)
 ```
 
 **Docker:** the included `Dockerfile` builds the frontend and runs the combined server as a non-root user, with a health check on `/api/health`.

@@ -34,6 +34,12 @@ export async function revokeSession(req, res) {
   res.status(204).end();
 }
 
+export async function exportMe(req, res) {
+  const data = await usersService.exportData(req.user._id);
+  res.set({ 'Content-Disposition': 'attachment; filename="mindmesh-export.json"', 'Cache-Control': 'no-store' });
+  res.json(data);
+}
+
 export async function deleteMe(req, res) {
   await usersService.deleteAccount(req.user._id, req.body.password);
   res.clearCookie(REFRESH_COOKIE, { path: '/api/auth' });
