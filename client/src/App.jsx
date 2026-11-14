@@ -11,6 +11,7 @@ import HomePage from './pages/HomePage.jsx';
 import SettingsPage from './pages/settings/SettingsPage.jsx';
 import NotFoundPage from './pages/NotFoundPage.jsx';
 import Skeleton from './components/ui/Skeleton.jsx';
+import TitleManager from './components/layout/TitleManager.jsx';
 
 // Library pages (and the rich-text editor) load on demand to keep the first load small.
 const VaultPage = lazy(() => import('./pages/vault/VaultPage.jsx'));
@@ -38,41 +39,44 @@ const page = (el) => (
 
 export default function App() {
   return (
-    <Routes>
-      <Route element={<PublicOnly />}>
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/register" element={<RegisterPage />} />
-      </Route>
-
-      <Route element={<RequireAuth allowIncompleteOnboarding />}>
-        <Route path="/onboarding" element={<OnboardingGate />} />
-      </Route>
-
-      <Route element={<RequireAuth />}>
-        <Route
-          element={
-            <LibraryProvider>
-              <AppShell />
-            </LibraryProvider>
-          }
-        >
-          <Route index element={<HomePage />} />
-          <Route path="/settings" element={<Navigate to="/settings/profile" replace />} />
-          <Route path="/settings/:tab" element={<SettingsPage />} />
-          <Route path="/vault" element={page(<VaultPage />)} />
-          <Route path="/vault/:id" element={page(<ResourcePage />)} />
-          <Route path="/collections" element={page(<CollectionsPage />)} />
-          <Route path="/assistant/:id?" element={page(<AssistantPage />)} />
-          <Route path="/search" element={page(<SearchPage />)} />
-          <Route path="/graph" element={page(<GraphPage />)} />
-          <Route path="/timeline" element={page(<TimelinePage />)} />
-          <Route path="/flashcards" element={page(<FlashcardsPage />)} />
-          <Route path="/quiz" element={page(<QuizPage />)} />
+    <>
+      <TitleManager />
+      <Routes>
+        <Route element={<PublicOnly />}>
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
         </Route>
-      </Route>
 
-      <Route path="*" element={<NotFoundPage />} />
-    </Routes>
+        <Route element={<RequireAuth allowIncompleteOnboarding />}>
+          <Route path="/onboarding" element={<OnboardingGate />} />
+        </Route>
+
+        <Route element={<RequireAuth />}>
+          <Route
+            element={
+              <LibraryProvider>
+                <AppShell />
+              </LibraryProvider>
+            }
+          >
+            <Route index element={<HomePage />} />
+            <Route path="/settings" element={<Navigate to="/settings/profile" replace />} />
+            <Route path="/settings/:tab" element={<SettingsPage />} />
+            <Route path="/vault" element={page(<VaultPage />)} />
+            <Route path="/vault/:id" element={page(<ResourcePage />)} />
+            <Route path="/collections" element={page(<CollectionsPage />)} />
+            <Route path="/assistant/:id?" element={page(<AssistantPage />)} />
+            <Route path="/search" element={page(<SearchPage />)} />
+            <Route path="/graph" element={page(<GraphPage />)} />
+            <Route path="/timeline" element={page(<TimelinePage />)} />
+            <Route path="/flashcards" element={page(<FlashcardsPage />)} />
+            <Route path="/quiz" element={page(<QuizPage />)} />
+          </Route>
+        </Route>
+
+        <Route path="*" element={<NotFoundPage />} />
+      </Routes>
+    </>
   );
 }
 

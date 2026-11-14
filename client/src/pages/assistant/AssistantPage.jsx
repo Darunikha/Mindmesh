@@ -15,6 +15,7 @@ import { useAuth } from '../../context/AuthContext.jsx';
 import { useTheme } from '../../context/ThemeContext.jsx';
 import { useToast } from '../../context/ToastContext.jsx';
 import { THEMES } from '../../themes/registry.js';
+import { useDocumentTitle } from '../../hooks/useDocumentTitle.js';
 import { firstName } from '../../lib/format.js';
 import { cn } from '../../lib/cn.js';
 
@@ -49,6 +50,8 @@ export default function AssistantPage() {
   const [status, setStatus] = useState(null);
   const [conversations, setConversations] = useState(null);
   const [conversation, setConversation] = useState(null);
+  // A specific chat is titled by its own name; the plain /assistant page is titled centrally.
+  useDocumentTitle(id ? conversation?.title || 'Assistant' : undefined);
   const [messages, setMessages] = useState([]);
   const [loadState, setLoadState] = useState('idle');
   const [mode, setMode] = useState(prefMode);

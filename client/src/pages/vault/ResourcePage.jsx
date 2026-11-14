@@ -15,6 +15,7 @@ import { useToast } from '../../context/ToastContext.jsx';
 import { useProcessingPoll } from '../../hooks/useProcessingPoll.js';
 import { resourceDetail } from '../../components/library/resourceMeta.js';
 import NoteView from './NoteView.jsx';
+import { useDocumentTitle } from '../../hooks/useDocumentTitle.js';
 import DocumentView from './DocumentView.jsx';
 import LinkView from './LinkView.jsx';
 
@@ -80,6 +81,7 @@ export default function ResourcePage() {
   const toast = useToast();
   const { refreshCollections, refreshTags, collectionById } = useLibrary();
   const [resource, setResource] = useState(null);
+  useDocumentTitle(resource?.title || 'Knowledge Vault');
   const [error, setError] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
