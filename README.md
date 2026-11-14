@@ -6,21 +6,37 @@ An AI-powered personal knowledge and learning workspace: a general-purpose AI as
 
 ---
 
+## Screenshots
+
+The same app in its three themes (click an image for full size). These show sample data.
+
+| | The Library | The Studio | The Lab |
+| --- | --- | --- | --- |
+| **Home** | <a href="docs/screenshots/library-home.jpg"><img src="docs/screenshots/library-home.jpg" alt="library theme: home" width="100%"></a> | <a href="docs/screenshots/studio-home.jpg"><img src="docs/screenshots/studio-home.jpg" alt="studio theme: home" width="100%"></a> | <a href="docs/screenshots/lab-home.jpg"><img src="docs/screenshots/lab-home.jpg" alt="lab theme: home" width="100%"></a> |
+| **Knowledge Vault** | <a href="docs/screenshots/library-vault.jpg"><img src="docs/screenshots/library-vault.jpg" alt="library theme: vault" width="100%"></a> | <a href="docs/screenshots/studio-vault.jpg"><img src="docs/screenshots/studio-vault.jpg" alt="studio theme: vault" width="100%"></a> | <a href="docs/screenshots/lab-vault.jpg"><img src="docs/screenshots/lab-vault.jpg" alt="lab theme: vault" width="100%"></a> |
+| **Note editor** | <a href="docs/screenshots/library-note.jpg"><img src="docs/screenshots/library-note.jpg" alt="library theme: note" width="100%"></a> | <a href="docs/screenshots/studio-note.jpg"><img src="docs/screenshots/studio-note.jpg" alt="studio theme: note" width="100%"></a> | <a href="docs/screenshots/lab-note.jpg"><img src="docs/screenshots/lab-note.jpg" alt="lab theme: note" width="100%"></a> |
+| **Knowledge Graph** | <a href="docs/screenshots/library-graph.jpg"><img src="docs/screenshots/library-graph.jpg" alt="library theme: graph" width="100%"></a> | <a href="docs/screenshots/studio-graph.jpg"><img src="docs/screenshots/studio-graph.jpg" alt="studio theme: graph" width="100%"></a> | <a href="docs/screenshots/lab-graph.jpg"><img src="docs/screenshots/lab-graph.jpg" alt="lab theme: graph" width="100%"></a> |
+
+Each theme has its own typography, surfaces, navigation and component shapes, not just different colours: catalogue-style cards and a bound-ledger sidebar in The Library, colour-blocked rounded modules in The Studio, and dark instrument panels with monospaced readouts in The Lab.
+
+---
+
 ## Contents
 
-1. [Features](#features)
-2. [Technology stack](#technology-stack)
-3. [Quick start](#quick-start)
-4. [Configuration](#configuration)
-5. [Database setup](#database-setup)
-6. [AI provider setup](#ai-provider-setup)
-7. [Vector search configuration](#vector-search-configuration)
-8. [File storage](#file-storage)
-9. [Architecture](#architecture)
-10. [Security](#security)
-11. [Testing and quality checks](#testing-and-quality-checks)
-12. [Deployment notes](#deployment-notes)
-13. [Known limitations](#known-limitations)
+1. [Screenshots](#screenshots)
+2. [Features](#features)
+3. [Technology stack](#technology-stack)
+4. [Quick start](#quick-start)
+5. [Configuration](#configuration)
+6. [Database setup](#database-setup)
+7. [AI provider setup](#ai-provider-setup)
+8. [Vector search configuration](#vector-search-configuration)
+9. [File storage](#file-storage)
+10. [Architecture](#architecture)
+11. [Security](#security)
+12. [Testing and quality checks](#testing-and-quality-checks)
+13. [Deployment notes](#deployment-notes)
+14. [Known limitations](#known-limitations)
 
 ---
 
