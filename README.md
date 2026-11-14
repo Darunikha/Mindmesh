@@ -4,6 +4,8 @@ An AI-powered personal knowledge and learning workspace: a general-purpose AI as
 
 **Status:** all five phases are complete. The assistant needs an Anthropic API key, and semantic features need an embedding key (see [AI setup](#ai-provider-setup)). Without keys, Mindmesh tells you so and falls back to keyword methods. It never fabricates answers, sources or results.
 
+**Contributing:** see [CONTRIBUTING.md](CONTRIBUTING.md). **Security issues:** please report them privately, as described in [SECURITY.md](SECURITY.md).
+
 ---
 
 ## Screenshots
