@@ -183,3 +183,43 @@ describe('data export', () => {
     assert.equal((await request(ctx.app).get('/api/users/me/export')).status, 401);
   });
 });
+
+describe('review streak', () => {
+  it('counts consecutive days, keeps a streak alive until the day ends, and resets after a gap', async () => {
+    const { computeStreak, shiftDay } = await import('../src/modules/flashcards/streak.js');
+    const set = (...d) => new Set(d);
+    assert.equal(computeStreak(set('2026-03-01', '2026-02-28', '2026-02-27'), '2026-03-01'), 3);
+    assert.equal(computeStreak(set('2026-02-28', '2026-02-27'), '2026-03-01'), 2, 'yesterday still counts before you review today');
+    assert.equal(computeStreak(set('2026-02-27'), '2026-03-01'), 0, 'a missed day resets it');
+    assert.equal(computeStreak(set(), '2026-03-01'), 0);
+    assert.equal(shiftDay('2026-03-01', -1), '2026-02-28');
+    assert.equal(shiftDay('2024-03-01', -1), '2024-02-29', 'leap years');
+    assert.equal(shiftDay('2026-01-01', -1), '2025-12-31');
+  });
+
+  it('reports reviewed-today and the streak from real reviews, in the viewer’s time zone', async () => {
+    const { default: ReviewEvent } = await import('../src/models/ReviewEvent.js');
+    const u = await makeUser(ctx.app);
+    const other = await makeUser(ctx.app);
+    const a = (await u.post('/api/flashcards', { front: 'A?', back: 'a' })).body.card;
+    const b = (await u.post('/api/flashcards', { front: 'B?', back: 'b' })).body.card;
+    const start = (await u.get('/api/flashcards/stats?tz=UTC')).body;
+    assert.deepEqual({ streak: start.streak, reviewedToday: start.reviewedToday, due: start.due }, { streak: 0, reviewedToday: 0, due: 2 });
+
+    await u.post(`/api/flashcards/${a.id}/review`, { grade: 'good' });
+    await u.post(`/api/flashcards/${b.id}/review`, { grade: 'easy' });
+    const day = 24 * 60 * 60 * 1000;
+    // Two earlier consecutive days, then a gap, then an old day.
+    await ReviewEvent.insertMany([1, 2].map((n) => ({ user: u.user.id, grade: 'good', at: new Date(Date.now() - n * day) })));
+    await ReviewEvent.create({ user: u.user.id, grade: 'good', at: new Date(Date.now() - 5 * day) });
+
+    const stats = (await u.get('/api/flashcards/stats?tz=UTC')).body;
+    assert.equal(stats.reviewedToday, 2);
+    assert.equal(stats.streak, 3, 'today + the two days before it; the gap ends the run');
+    assert.equal(stats.due, 0);
+
+    assert.equal((await other.get('/api/flashcards/stats')).body.streak, 0, 'streaks are per user');
+    assert.equal((await u.get('/api/flashcards/stats?tz=Not/AZone')).status, 400);
+    assert.equal((await u.get('/api/flashcards/stats')).status, 200, 'time zone is optional');
+  });
+});

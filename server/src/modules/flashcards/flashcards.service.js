@@ -1,5 +1,7 @@
 import mongoose from 'mongoose';
 import Flashcard from '../../models/Flashcard.js';
+import ReviewEvent from '../../models/ReviewEvent.js';
+import { computeStreak, todayIn } from './streak.js';
 import Resource from '../../models/Resource.js';
 import Chunk from '../../models/Chunk.js';
 import ApiError from '../../utils/ApiError.js';
@@ -60,20 +62,28 @@ export async function list(userId, { q, resourceId, status, page, limit }) {
   return { cards: rows.map((c) => serializeCard(c, titles)), total, page, hasMore: page * limit < total };
 }
 
-export async function stats(userId) {
+/**
+ * Card counts plus the review streak. "Today" and the streak use the viewer's time zone, so
+ * a review at 11pm local time counts for that local day.
+ */
+export async function stats(userId, timeZone = 'UTC') {
   const user = oid(userId);
   const now = new Date();
-  const startOfDay = new Date(now);
-  startOfDay.setHours(0, 0, 0, 0);
-  const [total, due, fresh, reviewedToday, mature] = await Promise.all([
+  const [total, due, fresh, mature, dayRows] = await Promise.all([
     Flashcard.countDocuments({ user }),
     Flashcard.countDocuments({ user, suspended: false, dueAt: { $lte: now } }),
     Flashcard.countDocuments({ user, suspended: false, reviewCount: 0 }),
-    Flashcard.countDocuments({ user, lastReviewedAt: { $gte: startOfDay } }),
     Flashcard.countDocuments({ user, intervalDays: { $gte: 21 } }),
+    ReviewEvent.aggregate([
+      { $match: { user, at: { $gte: new Date(now.getTime() - 400 * 24 * 60 * 60 * 1000) } } },
+      { $group: { _id: { $dateToString: { format: '%Y-%m-%d', date: '$at', timezone: timeZone } }, n: { $sum: 1 } } },
+    ]),
   ]);
+  const today = todayIn(timeZone, now);
+  const days = new Set(dayRows.map((r) => r._id));
+  const reviewedToday = dayRows.find((r) => r._id === today)?.n || 0;
   const nextDue = due ? null : (await Flashcard.findOne({ user, suspended: false }).sort({ dueAt: 1 }).lean())?.dueAt || null;
-  return { total, due, new: fresh, reviewedToday, mature, nextDue };
+  return { total, due, new: fresh, reviewedToday, mature, nextDue, streak: computeStreak(days, today), reviewedTodayAlready: reviewedToday > 0 };
 }
 
 /** Cards due now, oldest first; a session is capped so it stays short. */
@@ -108,6 +118,7 @@ export async function review(userId, id, grade) {
   const now = new Date();
   Object.assign(card, schedule(card, grade, now), { lastReviewedAt: now, reviewCount: card.reviewCount + 1 });
   await card.save();
+  await ReviewEvent.create({ user: userId, card: card._id, grade, at: now });
   return serializeCard(card.toObject(), await titlesFor(userId, [card]));
 }
 
@@ -181,5 +192,5 @@ export async function detachResource(userId, resourceId) {
 }
 
 export async function deleteAllForUser(userId) {
-  await Flashcard.deleteMany({ user: userId });
+  await Promise.all([Flashcard.deleteMany({ user: userId }), ReviewEvent.deleteMany({ user: userId })]);
 }

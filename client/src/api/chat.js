@@ -21,7 +21,7 @@ export const learningApi = {
 
 export const flashcardsApi = {
   list: (params = {}) => http.get(`/flashcards${qs(params)}`),
-  stats: () => http.get('/flashcards/stats'),
+  stats: () => http.get(`/flashcards/stats${qs({ tz: Intl.DateTimeFormat().resolvedOptions().timeZone })}`),
   due: (params = {}) => http.get(`/flashcards/due${qs(params)}`),
   create: (body) => http.post('/flashcards', body),
   update: (id, body) => http.patch(`/flashcards/${id}`, body),

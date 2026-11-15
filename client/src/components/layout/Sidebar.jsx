@@ -5,6 +5,7 @@ import { useTheme } from '../../context/ThemeContext.jsx';
 import { cn } from '../../lib/cn.js';
 import Logo from '../theme/Logo.jsx';
 import { NAV_SECTIONS, ROMAN } from './navigation.js';
+import DueBadge from './DueBadge.jsx';
 
 const TINT_BG = {
   accent: 'studio:bg-accent-soft studio:text-accent',
@@ -92,6 +93,7 @@ export default function Sidebar({ onNavigate }) {
                           <ActiveMarker active={isActive} />
                           <NavIcon icon={item.icon} tint={item.tint} active={isActive} />
                           <span className="flex-1 truncate">{item.label}</span>
+                          {item.to === '/flashcards' && <DueBadge />}
                         </>
                       )}
                     </NavLink>

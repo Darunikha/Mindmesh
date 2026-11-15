@@ -71,6 +71,7 @@ async function seed() {
   const docRes = (await api('POST', '/resources/documents', form, token, true)).resource;
   await api('POST', '/graph/connections', { sourceId: notes[0].id, targetId: notes[2].id, label: 'related idea' }, token);
   await api('POST', '/search/recent', { query: 'how computers learn', resultCount: 1 }, token);
+  await api('POST', '/flashcards', { front: 'What does backpropagation compute?', back: 'Gradients of the loss.' }, token);
   await api('POST', '/conversations', { title: 'Backprop questions' }, token);
   await new Promise((r) => setTimeout(r, 1500));
   return { email, password, token, noteId: notes[0].id, docId: docRes.id };

@@ -10,6 +10,7 @@ import CollectionSelect from '../components/library/CollectionSelect.jsx';
 import { quizApi } from '../api/chat.js';
 import { useTheme } from '../context/ThemeContext.jsx';
 import { useToast } from '../context/ToastContext.jsx';
+import { useStudy } from '../context/StudyContext.jsx';
 import { relativeTime } from '../lib/format.js';
 import { cn } from '../lib/cn.js';
 
@@ -234,6 +235,7 @@ function Runner({ quiz, onUpdate }) {
 
 function Summary({ quiz, onNew, onChanged }) {
   const toast = useToast();
+  const { refresh: refreshStudy } = useStudy();
   const [making, setMaking] = useState(false);
   const missed = quiz.questions.filter((q) => q.verdict !== 'correct');
 
@@ -243,6 +245,7 @@ function Summary({ quiz, onNew, onChanged }) {
       const res = await quizApi.makeFlashcards(quiz.id);
       toast.success(res.created ? `Added ${res.created} flashcard${res.created === 1 ? '' : 's'} to review` : res.message || 'Those cards already exist.');
       onChanged();
+      refreshStudy();
     } catch (err) {
       toast.error(err.message);
     } finally {

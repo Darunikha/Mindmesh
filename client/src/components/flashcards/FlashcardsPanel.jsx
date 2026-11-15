@@ -6,10 +6,12 @@ import Button from '../ui/Button.jsx';
 import CardDialog from './CardDialog.jsx';
 import { flashcardsApi } from '../../api/chat.js';
 import { useToast } from '../../context/ToastContext.jsx';
+import { useStudy } from '../../context/StudyContext.jsx';
 
 /** Flashcards for one item: count, AI generation, manual add and a shortcut to review them. */
 export default function FlashcardsPanel({ resource }) {
   const toast = useToast();
+  const { refresh: refreshStudy } = useStudy();
   const [count, setCount] = useState(null);
   const [due, setDue] = useState(0);
   const [generating, setGenerating] = useState(false);
@@ -21,10 +23,11 @@ export default function FlashcardsPanel({ resource }) {
       const [all, dueRes] = await Promise.all([flashcardsApi.list({ resourceId: resource.id, limit: 1 }), flashcardsApi.list({ resourceId: resource.id, status: 'due', limit: 1 })]);
       setCount(all.total);
       setDue(dueRes.total);
+      refreshStudy();
     } catch {
       setCount(0);
     }
-  }, [resource.id]);
+  }, [resource.id, refreshStudy]);
 
   useEffect(() => {
     load();

@@ -38,7 +38,20 @@ router.get(
   }),
   async (req, res) => res.json(await service.list(req.user._id, req.validatedQuery))
 );
-router.get('/stats', async (req, res) => res.json(await service.stats(req.user._id)));
+const timeZone = z
+  .string()
+  .max(64)
+  .default('UTC')
+  .refine((tz) => {
+    try {
+      new Intl.DateTimeFormat('en', { timeZone: tz });
+      return true;
+    } catch {
+      return false;
+    }
+  }, 'Unknown time zone');
+
+router.get('/stats', validate({ query: z.object({ tz: timeZone }) }), async (req, res) => res.json(await service.stats(req.user._id, req.validatedQuery.tz)));
 router.get(
   '/due',
   validate({ query: z.object({ limit: z.coerce.number().int().min(1).max(100).default(20), resourceId: objectId.optional() }) }),

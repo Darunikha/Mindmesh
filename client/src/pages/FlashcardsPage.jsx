@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useStudy } from '../context/StudyContext.jsx';
 import { Link, useSearchParams } from 'react-router-dom';
 import { GraduationCap, Layers, Pause, Pencil, Play, Plus, Search, Sparkles, Trash2, X } from 'lucide-react';
 import PageHeader from '../components/layout/PageHeader.jsx';
@@ -16,11 +17,12 @@ import { useDebouncedValue } from '../hooks/useProcessingPoll.js';
 import { relativeTime } from '../lib/format.js';
 import { cn } from '../lib/cn.js';
 
-function Stat({ label, value }) {
+function Stat({ label, value, hint, className }) {
   return (
-    <div className="mm-card min-w-0 p-4">
+    <div className={cn('mm-card min-w-0 p-4', className)}>
       <p className="mm-eyebrow">{label}</p>
       <p className="mt-1 font-display text-3xl text-ink lab:font-mono lab:text-2xl">{value ?? '–'}</p>
+      {hint && <p className="mt-0.5 font-ui text-[0.7rem] text-ink-muted">{hint}</p>}
     </div>
   );
 }
@@ -186,12 +188,8 @@ export default function FlashcardsPage() {
   const [sp, setSp] = useSearchParams();
   const tab = sp.get('tab') === 'cards' ? 'cards' : 'review';
   const resourceId = sp.get('resource') || undefined;
-  const [stats, setStats] = useState(null);
-
-  const loadStats = useCallback(() => flashcardsApi.stats().then(setStats).catch(() => {}), []);
-  useEffect(() => {
-    loadStats();
-  }, [loadStats]);
+  // Shared with the sidebar badge, so both always show the same numbers.
+  const { stats, refresh: loadStats } = useStudy();
 
   return (
     <>
@@ -201,11 +199,16 @@ export default function FlashcardsPage() {
         description="Flashcards scheduled with spaced repetition, so you review each idea just before you would forget it."
       />
 
-      <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-5">
         <Stat label="Due now" value={stats?.due} />
         <Stat label="New" value={stats?.new} />
         <Stat label="Reviewed today" value={stats?.reviewedToday} />
-        <Stat label="Total cards" value={stats?.total} />
+        <Stat
+          label="Day streak"
+          value={stats?.streak}
+          hint={stats ? (stats.streak === 0 ? (stats.total ? 'Review a card to start one' : 'Add cards to begin') : stats.reviewedToday ? 'Kept for today' : 'Review today to keep it') : undefined}
+        />
+        <Stat label="Total cards" value={stats?.total} className="col-span-2 lg:col-span-1" />
       </div>
 
       <div className="mb-5 flex flex-wrap items-center gap-2">

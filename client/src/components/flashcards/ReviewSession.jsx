@@ -161,7 +161,7 @@ export default function ReviewSession({ resourceId, onReviewed }) {
       <div className="mt-5">
         {!revealed ? (
           <Button size="lg" className="w-full" icon={Eye} onClick={() => setRevealed(true)}>
-            Show answer <span className="ml-1 hidden font-mono text-xs opacity-70 sm:inline">(Space)</span>
+            Show answer <span className="ml-1 hidden font-mono text-xs sm:inline">(Space)</span>
           </Button>
         ) : (
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4" role="group" aria-label="How well did you remember?">

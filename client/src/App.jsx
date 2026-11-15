@@ -2,6 +2,7 @@ import { Suspense, lazy } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { useAuth } from './context/AuthContext.jsx';
 import { LibraryProvider } from './context/LibraryContext.jsx';
+import { StudyProvider } from './context/StudyContext.jsx';
 import { PublicOnly, RequireAuth } from './components/layout/RouteGuards.jsx';
 import AppShell from './components/layout/AppShell.jsx';
 import LoginPage from './pages/auth/LoginPage.jsx';
@@ -55,7 +56,9 @@ export default function App() {
           <Route
             element={
               <LibraryProvider>
-                <AppShell />
+                <StudyProvider>
+                  <AppShell />
+                </StudyProvider>
               </LibraryProvider>
             }
           >

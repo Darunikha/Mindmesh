@@ -4,7 +4,8 @@ import { motion } from 'framer-motion';
 import { ArrowRight, Check, Compass, FileText, GraduationCap, Link2, MessageSquareText, Palette, Plus, Sparkles, Upload } from 'lucide-react';
 import { libraryApi } from '../api/library.js';
 import { searchApi } from '../api/discovery.js';
-import { conversationsApi, flashcardsApi } from '../api/chat.js';
+import { conversationsApi } from '../api/chat.js';
+import { useStudy } from '../context/StudyContext.jsx';
 import { useToast } from '../context/ToastContext.jsx';
 import { TypeBadge } from '../components/library/Badges.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
@@ -99,7 +100,7 @@ export default function HomePage() {
   const [overview, setOverview] = useState(null);
   const [recentSearches, setRecentSearches] = useState(null);
   const [hasConversations, setHasConversations] = useState(false);
-  const [cardStats, setCardStats] = useState(null);
+  const { stats: cardStats } = useStudy();
   const [overviewError, setOverviewError] = useState(null);
   const [creating, setCreating] = useState(false);
   const navigate = useNavigate();
@@ -114,10 +115,6 @@ export default function HomePage() {
     conversationsApi
       .list({ limit: 10 })
       .then((d) => alive && setHasConversations(d.conversations.some((c) => c.messageCount > 0)))
-      .catch(() => {});
-    flashcardsApi
-      .stats()
-      .then((d) => alive && setCardStats(d))
       .catch(() => {});
     searchApi
       .recent()
