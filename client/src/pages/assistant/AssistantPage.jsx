@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { Brain, LibraryBig, MessagesSquare, Sparkles } from 'lucide-react';
+import { Brain, Download, LibraryBig, MessagesSquare, Sparkles } from 'lucide-react';
 import Composer, { CHAT_MODES } from '../../components/chat/Composer.jsx';
 import ConversationList from '../../components/chat/ConversationList.jsx';
 import MessageItem from '../../components/chat/MessageItem.jsx';
@@ -16,6 +16,7 @@ import { useTheme } from '../../context/ThemeContext.jsx';
 import { useToast } from '../../context/ToastContext.jsx';
 import { THEMES } from '../../themes/registry.js';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle.js';
+import { saveBlob, slugFilename } from '../../lib/download.js';
 import { firstName } from '../../lib/format.js';
 import { cn } from '../../lib/cn.js';
 
@@ -59,6 +60,7 @@ export default function AssistantPage() {
   const [sendError, setSendError] = useState(null);
   const [toDelete, setToDelete] = useState(null);
   const [listOpen, setListOpen] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   const abortRef = useRef(null);
   const createdRef = useRef(null);
@@ -284,6 +286,17 @@ export default function AssistantPage() {
     [conversation, toast]
   );
 
+  const downloadChat = async () => {
+    setExporting(true);
+    try {
+      saveBlob(await conversationsApi.exportMarkdown(conversation.id), slugFilename(conversation.title));
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setExporting(false);
+    }
+  };
+
   const changeMode = (m) => {
     setMode(m);
     if (conversation) conversationsApi.update(conversation.id, { mode: m }).catch(() => {});
@@ -348,6 +361,11 @@ export default function AssistantPage() {
             <p className="mm-eyebrow">{theme === 'library' ? 'The Reading Room' : theme === 'lab' ? '01 / Core · assistant' : 'Assistant'}</p>
             <h1 className="truncate font-display text-xl text-ink sm:text-2xl library:text-3xl">{conversation?.title || 'New conversation'}</h1>
           </div>
+          {conversation && messages.some((m) => m.content) && !stream && (
+            <Button variant="ghost" size="sm" icon={Download} loading={exporting} onClick={downloadChat} aria-label="Download conversation as Markdown" title="Download this conversation as a Markdown file">
+              <span className="hidden sm:inline">Download</span>
+            </Button>
+          )}
         </header>
 
         <div ref={scrollRef} onScroll={onScroll} className="min-h-0 flex-1 overflow-y-auto pr-1" aria-live="polite" aria-relevant="additions">

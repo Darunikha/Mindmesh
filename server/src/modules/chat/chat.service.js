@@ -5,6 +5,7 @@ import ApiError from '../../utils/ApiError.js';
 import Resource from '../../models/Resource.js';
 import { markdownToDoc } from '../../processing/markdownToDoc.js';
 import { createNote } from '../library/library.service.js';
+import { slugFilename } from '../../processing/docToMarkdown.js';
 import { escapeRegex } from '../../utils/validators.js';
 
 export function serializeConversation(c) {
@@ -97,6 +98,31 @@ export async function updateConversation(userId, id, { title, mode }) {
   if (mode) c.mode = mode;
   await c.save();
   return serializeConversation(c);
+}
+
+const MODE_LABEL = { general: 'General AI', knowledge: 'My Knowledge' };
+const stamp = (d) => new Date(d).toISOString().slice(0, 16).replace('T', ' ');
+
+/**
+ * A conversation as a Markdown file. Answers are already Markdown and are kept as written;
+ * the sources an answer actually cited are listed under it, by title and page.
+ */
+export async function exportConversationMarkdown(userId, id) {
+  const c = await findOwnedConversation(userId, id);
+  const messages = await Message.find({ conversation: c._id, user: userId, content: { $ne: '' } }).sort({ createdAt: 1, _id: 1 }).lean();
+  if (!messages.length) throw ApiError.badRequest('This conversation has no messages to download yet');
+  const parts = [`# ${c.title.replace(/\s+/g, ' ').trim()}`, `*Exported from Mindmesh on ${stamp(new Date())} UTC · ${messages.length} message${messages.length === 1 ? '' : 's'}*`];
+  for (const m of messages) {
+    const who = m.role === 'user' ? 'You' : m.kind === 'notice' ? 'Mindmesh (notice)' : 'Mindmesh';
+    parts.push(`## ${who} · ${stamp(m.createdAt)} UTC · ${MODE_LABEL[m.mode] || m.mode}`);
+    parts.push(m.content.trim());
+    const cited = (m.citations || []).filter((x) => x.cited);
+    if (cited.length) {
+      parts.push(`**Sources**\n\n${cited.map((x) => `${x.n}. ${x.title.replace(/[[\]]/g, '')}${x.page ? ` (page ${x.page})` : ''}${x.resourceDeleted ? ' (since deleted)' : ''}`).join('\n')}`);
+    }
+    if (m.status === 'stopped') parts.push('*(Stopped before finishing.)*');
+  }
+  return { filename: slugFilename(c.title), markdown: `${parts.join('\n\n')}\n` };
 }
 
 export async function deleteConversation(userId, id) {

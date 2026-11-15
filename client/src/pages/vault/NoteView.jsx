@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Copy, RefreshCw } from 'lucide-react';
+import { Copy, Download, RefreshCw } from 'lucide-react';
 import RichTextEditor from '../../components/editor/RichTextEditor.jsx';
 import SaveIndicator from '../../components/editor/SaveIndicator.jsx';
 import Alert from '../../components/ui/Alert.jsx';
@@ -8,6 +8,7 @@ import Button from '../../components/ui/Button.jsx';
 import { libraryApi } from '../../api/library.js';
 import { useAutosave } from '../../hooks/useAutosave.js';
 import { useToast } from '../../context/ToastContext.jsx';
+import { saveBlob, slugFilename } from '../../lib/download.js';
 
 /**
  * Note editing with autosave. Content saves carry the revision they were based on, so edits
@@ -40,6 +41,20 @@ export default function NoteView({ resource, onChange, autoFocusTitle, renderSta
 
   const autosave = useAutosave(save);
   const { markDirty, flush } = autosave;
+  const [downloading, setDownloading] = useState(false);
+
+  // Saves any pending edits first, so the file always has what is on screen.
+  const downloadMarkdown = useCallback(async () => {
+    setDownloading(true);
+    try {
+      await flush();
+      saveBlob(await libraryApi.noteMarkdown(resource.id), slugFilename(title));
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setDownloading(false);
+    }
+  }, [flush, resource.id, title, toast]);
 
   useEffect(() => {
     if (autoFocusTitle) titleRef.current?.focus();
@@ -58,8 +73,15 @@ export default function NoteView({ resource, onChange, autoFocusTitle, renderSta
   }, [flush]);
 
   useEffect(() => {
-    renderStatus?.(<SaveIndicator state={autosave.state} lastSavedAt={autosave.lastSavedAt} onRetry={autosave.retry} />);
-  }, [autosave.state, autosave.lastSavedAt, autosave.retry, renderStatus]);
+    renderStatus?.(
+      <>
+        <SaveIndicator state={autosave.state} lastSavedAt={autosave.lastSavedAt} onRetry={autosave.retry} />
+        <Button variant="ghost" size="sm" icon={Download} loading={downloading} onClick={downloadMarkdown} aria-label="Download .md file of this note" title="Download this note as a Markdown file">
+          <span className="hidden sm:inline">Download .md</span>
+        </Button>
+      </>
+    );
+  }, [autosave.state, autosave.lastSavedAt, autosave.retry, renderStatus, downloading, downloadMarkdown]);
 
   const reloadLatest = async () => {
     autosave.discardPending();

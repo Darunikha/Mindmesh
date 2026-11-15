@@ -12,6 +12,7 @@ export const libraryApi = {
   reprocess: (id) => http.post(`/resources/${id}/reprocess`),
   bulk: (body) => http.post('/resources/bulk', body),
   fileBlob: (id, opts) => fetchBlob(`/resources/${id}/file`, opts),
+  noteMarkdown: (id) => fetchBlob(`/resources/${id}/markdown`),
   upload: (file, { collectionId, tags, title } = {}, opts) => {
     const form = new FormData();
     if (title) form.append('title', title);

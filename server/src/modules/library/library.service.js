@@ -18,6 +18,7 @@ import { enqueue, indexNote } from '../../processing/processor.js';
 import { assertCollectionOwned } from '../collections/collections.service.js';
 import { logActivity } from '../timeline/activity.js';
 import { search as runSearch } from '../search/search.service.js';
+import { noteToMarkdownFile, slugFilename } from '../../processing/docToMarkdown.js';
 import { deleteAllForUser as deleteFlashcardsForUser, detachResource as detachFlashcards } from '../flashcards/flashcards.service.js';
 import { deleteAllForUser as deleteQuizzesForUser, detachResource as detachQuizzes } from '../quiz/quiz.service.js';
 
@@ -200,6 +201,17 @@ export async function getResource(userId, id, { touch = true } = {}) {
     logActivity(userId, 'resource_opened', { resource: r._id, title: r.title, meta: { resourceType: r.type } });
   }
   return serializeResource(touch ? { ...r, lastAccessedAt: now } : r, { withContent: true });
+}
+
+/** A note as a Markdown file (title, tags, body). Only notes have editable rich text. */
+export async function exportNoteMarkdown(userId, id) {
+  const r = await Resource.findOne({ _id: id, user: userId }).populate(TAG_POPULATE).lean();
+  if (!r) throw ApiError.notFound('This item does not exist or you do not have access to it');
+  if (r.type !== 'note') throw ApiError.badRequest('Only notes can be downloaded as Markdown');
+  return {
+    filename: slugFilename(r.title),
+    markdown: noteToMarkdownFile({ title: r.title, tags: (r.tags || []).map((t) => t.name), content: r.note?.content }),
+  };
 }
 
 export async function getChunks(userId, id, { page, limit }) {

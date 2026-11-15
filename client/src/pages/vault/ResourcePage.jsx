@@ -172,7 +172,7 @@ export default function ResourcePage() {
             </>
           )}
         </nav>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center justify-end gap-2">
           {resource.type === 'note' && saveStatus}
           <Button variant="ghost" size="sm" icon={resource.pinned ? PinOff : Pin} onClick={togglePin} aria-pressed={resource.pinned}>
             {resource.pinned ? 'Unpin' : 'Pin'}

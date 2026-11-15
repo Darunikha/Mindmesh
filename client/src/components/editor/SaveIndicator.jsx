@@ -21,7 +21,7 @@ export default function SaveIndicator({ state, lastSavedAt, onRetry }) {
   const Icon = view.icon;
 
   return (
-    <span className={cn('inline-flex items-center gap-1.5 font-ui text-xs lab:font-mono lab:text-[0.68rem] lab:uppercase lab:tracking-wider', view.cls)} role="status" aria-live="polite">
+    <span className={cn('inline-flex items-center gap-1.5 whitespace-nowrap font-ui text-xs lab:font-mono lab:text-[0.68rem] lab:uppercase lab:tracking-wider', view.cls)} role="status" aria-live="polite">
       <Icon size={13} className={view.spin ? 'animate-spin' : undefined} aria-hidden />
       {view.text}
       {state === 'error' && onRetry && (

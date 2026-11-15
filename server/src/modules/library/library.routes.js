@@ -7,6 +7,7 @@ import { objectIdParams } from '../../utils/validators.js';
 import { receiveUpload } from './upload.middleware.js';
 import * as v from './library.validators.js';
 import * as service from './library.service.js';
+import { sendMarkdown } from '../../utils/download.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -39,6 +40,10 @@ router.post('/bulk', validate({ body: v.bulkSchema }), async (req, res) => res.j
 router.get('/:id', validate({ params: objectIdParams }), async (req, res) =>
   res.json({ resource: await service.getResource(req.user._id, req.params.id, { touch: req.query.touch !== 'false' }) })
 );
+router.get('/:id/markdown', validate({ params: objectIdParams }), async (req, res) => {
+  const { filename, markdown } = await service.exportNoteMarkdown(req.user._id, req.params.id);
+  sendMarkdown(res, filename, markdown);
+});
 router.get('/:id/chunks', validate({ params: objectIdParams, query: v.chunkQuery }), async (req, res) =>
   res.json(await service.getChunks(req.user._id, req.params.id, req.validatedQuery))
 );

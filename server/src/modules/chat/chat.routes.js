@@ -12,6 +12,7 @@ import { getChatProvider } from '../../ai/providers.js';
 import * as service from './chat.service.js';
 import { runGeneration } from './generation.js';
 import { logActivity } from '../timeline/activity.js';
+import { sendMarkdown } from '../../utils/download.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -57,6 +58,10 @@ function chatProviderOrThrow() {
 
 router.get('/', validate({ query: listQuery }), async (req, res) => res.json(await service.listConversations(req.user._id, req.validatedQuery)));
 router.post('/', validate({ body: createSchema }), async (req, res) => res.status(201).json({ conversation: await service.createConversation(req.user._id, req.body) }));
+router.get('/:id/export', validate({ params: objectIdParams }), async (req, res) => {
+  const { filename, markdown } = await service.exportConversationMarkdown(req.user._id, req.params.id);
+  sendMarkdown(res, filename, markdown);
+});
 router.get('/:id', validate({ params: objectIdParams }), async (req, res) => res.json(await service.getConversation(req.user._id, req.params.id)));
 router.patch('/:id', validate({ params: objectIdParams, body: updateSchema }), async (req, res) =>
   res.json({ conversation: await service.updateConversation(req.user._id, req.params.id, req.body) })

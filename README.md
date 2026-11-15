@@ -54,6 +54,7 @@ Each theme has its own typography, surfaces, navigation and component shapes, no
 | **Knowledge Graph** | Interactive React Flow graph of items, topics (tags) and collections. Drag, zoom, search, filter, focus on neighbours, connect items by dragging, and review AI-suggested connections (accept or dismiss). |
 | **Flashcards (Review)** | Make flashcards by hand or generate them from any note, document or link with AI (answers must come from the item's own text; duplicate questions are skipped). Review with **spaced repetition** (an SM-2 style schedule): reveal, then grade Again / Hard / Good / Easy, with the next interval shown on each button, keyboard shortcuts (Space, 1–4), and "Again" cards returning later in the same session. Cards outlive their source item. Due counts appear on Home. |
 | **Quiz me** | Pick a scope (everything, a collection, or one item) and the assistant writes questions from your own text. You answer in your own words and each answer is graded against the source passage, then you see the reference answer, the source excerpt (with a link) and a note that grading is AI-made. Questions you miss or half-answer become flashcards in one click. Progress is saved, and past quizzes are listed. |
+| **Markdown downloads** | **Download .md** on any note saves it as a Markdown file (title, tags and body, with formatting, lists, code and links), including text you typed a moment ago. **Download** in the assistant saves a whole conversation, with timestamps, answer modes and the sources each answer cited. Files are built on the server from your own data only. |
 | **Save to Vault** | One click turns an assistant answer into an editable note: the Markdown becomes rich text, your question is quoted, and cited sources are listed with links. Saving twice returns the same note. |
 | **Timeline** | A history of notes written, documents and links added, connections made, topics searched, questions asked, items revisited, flashcard review sessions and quizzes taken (with scores), with type and date filters and a 12-week activity map. |
 | **Settings** | Profile, account, theme, reduced motion, AI preferences, live AI and index status, re-indexing, library defaults, password change, sessions and sign-out-everywhere, account deletion. |
@@ -255,7 +256,7 @@ mindmesh/
 ## Testing and quality checks
 
 ```bash
-npm test                    # API tests (90) + component tests (18)
+npm test                    # API tests (98) + component tests (18)
 npm test -w server          # API only: node:test + supertest + in-memory MongoDB
 npm test -w client          # components only: Vitest + Testing Library (jsdom)
 npm run dev & npm run check:ui

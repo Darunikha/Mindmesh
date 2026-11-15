@@ -1,4 +1,4 @@
-import { http, qs, streamSse } from './client.js';
+import { fetchBlob, http, qs, streamSse } from './client.js';
 
 export const conversationsApi = {
   list: (params = {}) => http.get(`/conversations${qs(params)}`),
@@ -6,6 +6,7 @@ export const conversationsApi = {
   get: (id) => http.get(`/conversations/${id}`),
   update: (id, body) => http.patch(`/conversations/${id}`, body),
   remove: (id) => http.del(`/conversations/${id}`),
+  exportMarkdown: (id) => fetchBlob(`/conversations/${id}/export`),
   send: (id, body, opts) => streamSse(`/conversations/${id}/messages`, body, opts),
   regenerate: (id, messageId, body, opts) => streamSse(`/conversations/${id}/messages/${messageId}/regenerate`, body, opts),
 };
