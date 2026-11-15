@@ -55,7 +55,7 @@ Each theme has its own typography, surfaces, navigation and component shapes, no
 | **Flashcards (Review)** | Make flashcards by hand or generate them from any note, document or link with AI (answers must come from the item's own text; duplicate questions are skipped). Review with **spaced repetition** (an SM-2 style schedule): reveal, then grade Again / Hard / Good / Easy, with the next interval shown on each button, keyboard shortcuts (Space, 1–4), and "Again" cards returning later in the same session. Cards outlive their source item. Due counts appear on Home. |
 | **Quiz me** | Pick a scope (everything, a collection, or one item) and the assistant writes questions from your own text. You answer in your own words and each answer is graded against the source passage, then you see the reference answer, the source excerpt (with a link) and a note that grading is AI-made. Questions you miss or half-answer become flashcards in one click. Progress is saved, and past quizzes are listed. |
 | **Save to Vault** | One click turns an assistant answer into an editable note: the Markdown becomes rich text, your question is quoted, and cited sources are listed with links. Saving twice returns the same note. |
-| **Timeline** | A history of notes written, documents and links added, connections made, topics searched, questions asked and items revisited, with type and date filters and a 12-week activity map. |
+| **Timeline** | A history of notes written, documents and links added, connections made, topics searched, questions asked, items revisited, flashcard review sessions and quizzes taken (with scores), with type and date filters and a 12-week activity map. |
 | **Settings** | Profile, account, theme, reduced motion, AI preferences, live AI and index status, re-indexing, library defaults, password change, sessions and sign-out-everywhere, account deletion. |
 
 ## Technology stack
@@ -231,7 +231,7 @@ mindmesh/
 - Claude reviews the batch when available and drops weak pairs.
 - Nothing is added until you accept it, and decided pairs are never suggested again.
 
-**Timeline:** an `Activity` log written by the services. Existing history is backfilled once without duplicates, and per-day summaries are bucketed in the viewer's time zone.
+**Timeline:** an `Activity` log written by the services. Existing history is backfilled once without duplicates (flashcard sessions and quizzes are recorded from when they were introduced onward), and per-day summaries are bucketed in the viewer's time zone. Flashcard reviews are grouped into sessions (reviews within 6 hours of each other are one entry) so the log isn't flooded, and a quiz is logged once, when it is finished.
 
 **Themes:**
 - Every colour, font, radius and shadow is a CSS variable set per `[data-theme]` in `client/src/themes/themes.css`, then mapped into Tailwind.
@@ -255,7 +255,7 @@ mindmesh/
 ## Testing and quality checks
 
 ```bash
-npm test                    # API tests (86) + component tests (18)
+npm test                    # API tests (90) + component tests (18)
 npm test -w server          # API only: node:test + supertest + in-memory MongoDB
 npm test -w client          # components only: Vitest + Testing Library (jsdom)
 npm run dev & npm run check:ui

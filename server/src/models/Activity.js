@@ -11,6 +11,8 @@ export const ACTIVITY_TYPES = [
   'search',
   'conversation_started',
   'resource_opened',
+  'flashcards_reviewed',
+  'quiz_completed',
 ];
 
 /** Append-only log behind the Knowledge Timeline. */

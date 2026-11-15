@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 import Flashcard from '../../models/Flashcard.js';
 import ReviewEvent from '../../models/ReviewEvent.js';
 import { computeStreak, todayIn } from './streak.js';
+import { logReviewSession } from '../timeline/activity.js';
 import Resource from '../../models/Resource.js';
 import Chunk from '../../models/Chunk.js';
 import ApiError from '../../utils/ApiError.js';
@@ -119,6 +120,7 @@ export async function review(userId, id, grade) {
   Object.assign(card, schedule(card, grade, now), { lastReviewedAt: now, reviewCount: card.reviewCount + 1 });
   await card.save();
   await ReviewEvent.create({ user: userId, card: card._id, grade, at: now });
+  await logReviewSession(userId, now);
   return serializeCard(card.toObject(), await titlesFor(userId, [card]));
 }
 

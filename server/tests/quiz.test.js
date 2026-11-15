@@ -126,3 +126,24 @@ describe('quizzes', () => {
     assert.equal(kept.questions[0].source.title, 'Backprop');
   });
 });
+
+describe('quizzes on the timeline', () => {
+  it('records a finished quiz once, with its score, and not before it is finished', async () => {
+    const u = await makeUser(ctx.app);
+    const note = await seed(u);
+    await waitForIdle();
+    const quiz = (await u.post('/api/quizzes', { scope: { type: 'resource', id: note.id }, count: 6 })).body.quiz;
+    const entries = async () => (await u.get('/api/timeline?types=quiz_completed')).body.items;
+
+    await u.post(`/api/quizzes/${quiz.id}/answer`, { index: 0, answer: 'chain rule' });
+    assert.equal((await entries()).length, 0, 'an unfinished quiz is not logged');
+    await u.post(`/api/quizzes/${quiz.id}/answer`, { index: 1, answer: 'no idea' });
+
+    const done = await entries();
+    assert.equal(done.length, 1);
+    assert.equal(done[0].title, 'Backprop');
+    assert.deepEqual({ score: done[0].meta.score, total: done[0].meta.total, quizId: done[0].meta.quizId }, { score: 50, total: 2, quizId: quiz.id });
+    assert.equal((await u.post(`/api/quizzes/${quiz.id}/answer`, { index: 1, answer: 'again' })).status, 409);
+    assert.equal((await entries()).length, 1, 'never logged twice');
+  });
+});

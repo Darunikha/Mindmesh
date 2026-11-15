@@ -6,6 +6,7 @@ import Collection from '../../models/Collection.js';
 import Flashcard from '../../models/Flashcard.js';
 import ApiError from '../../utils/ApiError.js';
 import { getChatProvider } from '../../ai/providers.js';
+import { logActivity } from '../timeline/activity.js';
 
 const oid = (v) => new mongoose.Types.ObjectId(String(v));
 const MAX_SOURCE_CHARS = 12000;
@@ -162,6 +163,7 @@ export async function answer(userId, id, { index, answer: text }) {
   });
   if (!graded?.verdict) throw new ApiError(502, 'The answer could not be graded right now. Please try again.', 'GRADING_FAILED');
 
+  const wasComplete = quiz.status === 'complete';
   q.userAnswer = text;
   q.verdict = graded.verdict;
   q.feedback = String(graded.feedback || '').slice(0, 1000);
@@ -172,6 +174,9 @@ export async function answer(userId, id, { index, answer: text }) {
     quiz.status = 'complete';
   }
   await quiz.save();
+  if (quiz.status === 'complete' && !wasComplete) {
+    logActivity(userId, 'quiz_completed', { title: quiz.title.replace(/^Quiz: /, ''), meta: { quizId: String(quiz._id), score: quiz.score, total: quiz.questions.length } });
+  }
   return serializeQuiz(quiz, { full: true });
 }
 

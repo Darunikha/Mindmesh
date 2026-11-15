@@ -223,3 +223,26 @@ describe('review streak', () => {
     assert.equal((await u.get('/api/flashcards/stats')).status, 200, 'time zone is optional');
   });
 });
+
+describe('timeline: reviews and quizzes', () => {
+  it('groups flashcard reviews into sessions instead of one entry per card', async () => {
+    const { default: Activity } = await import('../src/models/Activity.js');
+    const u = await makeUser(ctx.app);
+    const cards = [];
+    for (const n of [1, 2, 3]) cards.push((await u.post('/api/flashcards', { front: `Q${n}?`, back: 'a' })).body.card);
+    for (const c of cards) await u.post(`/api/flashcards/${c.id}/review`, { grade: 'good' });
+
+    let sessions = (await u.get('/api/timeline?types=flashcards_reviewed')).body.items;
+    assert.equal(sessions.length, 1, 'three reviews = one session entry');
+    assert.equal(sessions[0].meta.count, 3);
+
+    // A review long after the last one starts a new session.
+    await Activity.updateOne({ _id: sessions[0].id }, { $set: { 'meta.lastAt': new Date(Date.now() - 7 * 60 * 60 * 1000) } });
+    await u.post(`/api/flashcards/${cards[0].id}/review`, { grade: 'easy' });
+    sessions = (await u.get('/api/timeline?types=flashcards_reviewed')).body.items;
+    assert.deepEqual(sessions.map((s) => s.meta.count).sort(), [1, 3]);
+
+    const other = await makeUser(ctx.app);
+    assert.equal((await other.get('/api/timeline?types=flashcards_reviewed')).body.items.length, 0, 'sessions are per user');
+  });
+});

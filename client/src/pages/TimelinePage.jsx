@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { Eye, FileText, FolderPlus, Globe, History, Link2, MessageSquareText, NotebookPen, Search } from 'lucide-react';
+import { ClipboardCheck, Eye, FileText, FolderPlus, GraduationCap, Globe, History, Link2, MessageSquareText, NotebookPen, Search } from 'lucide-react';
 import PageHeader from '../components/layout/PageHeader.jsx';
 import Button from '../components/ui/Button.jsx';
 import Alert from '../components/ui/Alert.jsx';
@@ -20,12 +20,33 @@ export const ACTIVITY = {
   search: { label: 'Topics searched', verb: 'Searched for', icon: Search, tint: 'text-accent-3', bg: 'bg-accent-3-soft' },
   conversation_started: { label: 'Questions asked', verb: 'Asked', icon: MessageSquareText, tint: 'text-accent-2', bg: 'bg-accent-2-soft' },
   resource_opened: { label: 'Items revisited', verb: 'Opened', icon: Eye, tint: 'text-ink-muted', bg: 'bg-sunken' },
+  flashcards_reviewed: { label: 'Cards reviewed', verb: 'Reviewed flashcards', icon: GraduationCap, tint: 'text-accent-3', bg: 'bg-accent-3-soft' },
+  quiz_completed: { label: 'Quizzes taken', verb: 'Completed a quiz', icon: ClipboardCheck, tint: 'text-accent-2', bg: 'bg-accent-2-soft' },
 };
 const TYPES = Object.keys(ACTIVITY);
 const TZ = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
 const dayKey = (d) => new Date(d).toLocaleDateString('en-CA');
 
-function href(a) {
+/** What an entry is called: reviews and quizzes read as a sentence, the rest by their item's name. */
+export function activityTitle(a) {
+  if (a.type === 'flashcards_reviewed') {
+    const n = a.meta?.count || 1;
+    return `${n} flashcard${n === 1 ? '' : 's'}`;
+  }
+  if (a.type === 'search' || a.type === 'conversation_started') return `“${a.title}”`;
+  return a.title;
+}
+
+/** A short second line for entries that carry extra facts. */
+export function activityDetail(a) {
+  if (a.type === 'search' && a.meta?.resultCount != null) return `${a.meta.resultCount} results`;
+  if (a.type === 'quiz_completed' && a.meta?.score != null) return `Score ${a.meta.score}% · ${a.meta.total} question${a.meta.total === 1 ? '' : 's'}`;
+  return null;
+}
+
+export function href(a) {
+  if (a.type === 'flashcards_reviewed') return '/flashcards';
+  if (a.type === 'quiz_completed') return a.meta?.quizId ? `/quiz?id=${a.meta.quizId}` : '/quiz';
   if (a.type === 'search') return `/search?q=${encodeURIComponent(a.title)}`;
   if (a.type === 'conversation_started' && a.conversationId) return `/assistant/${a.conversationId}`;
   if (a.type === 'collection_created' && a.collectionId) return `/vault?collection=${a.collectionId}`;
@@ -79,7 +100,8 @@ function Entry({ a }) {
   const Icon = meta.icon;
   const to = href(a);
   const time = new Date(a.at).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: theme !== 'lab' });
-  const title = a.type === 'search' || a.type === 'conversation_started' ? `“${a.title}”` : a.title;
+  const title = activityTitle(a);
+  const detail = activityDetail(a);
   const body = (
     <>
       <span className={cn('flex h-8 w-8 shrink-0 items-center justify-center rounded-full lab:rounded-[6px] library:border library:border-line-strong', meta.bg, meta.tint)}>
@@ -90,7 +112,7 @@ function Entry({ a }) {
         <span className={cn('block truncate font-ui text-sm text-ink library:font-display library:text-base', to && 'group-hover:text-accent', a.resourceExists === false && 'text-ink-faint line-through')}>
           {title || 'Untitled'}
         </span>
-        {a.type === 'search' && a.meta?.resultCount != null && <span className="block font-ui text-[0.7rem] text-ink-faint">{a.meta.resultCount} results</span>}
+        {detail && <span className="block font-ui text-[0.7rem] text-ink-faint">{detail}</span>}
         {a.resourceExists === false && <span className="block font-ui text-[0.7rem] text-ink-faint">Since deleted</span>}
       </span>
       <time dateTime={a.at} className="shrink-0 font-ui text-xs text-ink-faint lab:font-mono">
