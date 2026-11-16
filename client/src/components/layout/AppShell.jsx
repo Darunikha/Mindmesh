@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Menu, X } from 'lucide-react';
+import { Menu, Search, X } from 'lucide-react';
 import Sidebar from './Sidebar.jsx';
 import Logo from '../theme/Logo.jsx';
+import CommandPalette, { openPalette } from './CommandPalette.jsx';
 import { cn } from '../../lib/cn.js';
 
 /**
@@ -53,10 +54,17 @@ export default function AppShell() {
         )}
       >
         <Logo size={28} />
+        <div className="flex items-center gap-1">
+        <button type="button" className="mm-btn mm-btn-ghost mm-btn-icon" onClick={openPalette} aria-label="Quick jump">
+          <Search size={20} />
+        </button>
         <button type="button" className="mm-btn mm-btn-ghost mm-btn-icon" onClick={() => setDrawerOpen(true)} aria-label="Open navigation" aria-expanded={drawerOpen}>
           <Menu size={20} />
         </button>
+        </div>
       </header>
+
+      <CommandPalette />
 
       <AnimatePresence>
         {drawerOpen && (

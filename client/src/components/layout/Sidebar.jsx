@@ -1,11 +1,12 @@
 import { NavLink } from 'react-router-dom';
-import { LogOut, Settings } from 'lucide-react';
+import { LogOut, Search, Settings } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { useTheme } from '../../context/ThemeContext.jsx';
 import { cn } from '../../lib/cn.js';
 import Logo from '../theme/Logo.jsx';
 import { NAV_SECTIONS, ROMAN } from './navigation.js';
 import DueBadge from './DueBadge.jsx';
+import { openPalette } from './CommandPalette.jsx';
 
 const TINT_BG = {
   accent: 'studio:bg-accent-soft studio:text-accent',
@@ -63,6 +64,21 @@ export default function Sidebar({ onNavigate }) {
         <Logo size={theme === 'lab' ? 28 : 32} />
       </div>
       {theme === 'library' && <hr className="mm-rule mx-5 mb-2" />}
+
+      <div className="px-3 pb-1">
+        <button
+          type="button"
+          onClick={() => {
+            onNavigate?.();
+            openPalette();
+          }}
+          className={cn(itemClasses(false), 'border border-line text-ink-faint studio:border-0 studio:bg-sunken')}
+        >
+          <Search size={16} aria-hidden />
+          <span className="flex-1 truncate text-left">Quick jump</span>
+          <kbd className="font-mono text-[0.68rem]">Ctrl K</kbd>
+        </button>
+      </div>
 
       <div className="flex-1 space-y-6 overflow-y-auto px-3 py-3 lab:space-y-5">
         {NAV_SECTIONS.map((section, si) => (
