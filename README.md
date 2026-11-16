@@ -285,7 +285,21 @@ docker build -t mindmesh .
 docker run -p 4000:4000 --env-file server/.env -v mindmesh-uploads:/app/server/uploads mindmesh
 ```
 
-The Docker build is **untested** here because Docker isn't installed on the development machine. The same steps run without Docker as shown above.
+**Docker Compose (app + its own MongoDB):** `docker-compose.yml` starts Mindmesh together with a MongoDB, with the database and uploaded files kept in Docker volumes.
+
+```bash
+cp .env.example .env        # then fill in JWT_ACCESS_SECRET and JWT_REFRESH_SECRET (the file explains how)
+docker compose up -d --build
+# open http://localhost:4000
+```
+
+- Add `ANTHROPIC_API_KEY` (and `VOYAGE_API_KEY` for My Knowledge search) to `.env` to turn on the AI features. Without them everything else works.
+- The database has no password, so it is deliberately **not** published to your network; only the app can reach it.
+- This plain MongoDB has no Atlas Vector Search, so semantic search runs inside the app (`VECTOR_SEARCH=local`), which suits personal-sized libraries.
+- `docker compose down` keeps your data; `docker compose down -v` deletes it. To back up, copy the `mindmesh-db` and `mindmesh-uploads` volumes (for example with `mongodump` and a copy of the uploads).
+- Production mode sends the sign-in cookie as `Secure`. Browsers accept that on `http://localhost`, but **not** on other plain-HTTP addresses (such as your computer's network address), where sign-in won't survive a page reload. For anything beyond `localhost`, put it behind an HTTPS reverse proxy and set `CLIENT_ORIGIN` and `TRUST_PROXY=true` in `.env`.
+
+**Testing status of the Docker files:** Docker isn't installed on the development machine, so neither the `Dockerfile` nor `docker-compose.yml` has ever been run. What was checked: the compose file parses and its settings match what the server reads, and the server was run in production mode against a real MongoDB with exactly the settings the compose file passes (it starts, signs people up, stores notes, searches, and explains that the AI isn't configured). The container build, networking, healthcheck and volumes are untested, so expect to fix small things the first time you run it. The same steps run without Docker as shown above.
 
 - Use a hosted MongoDB (Atlas) via `MONGODB_URI`. `USE_IN_MEMORY_DB` is refused in production.
 - Set `NODE_ENV=production`, serve over HTTPS (cookies become `Secure`, and browsers only install the app and run its service worker over HTTPS; `localhost` also counts), set `TRUST_PROXY=true` behind a proxy, and set `CLIENT_ORIGIN` to your site's address.

@@ -1,0 +1,56 @@
+# Mindmesh with its own MongoDB, started with one command:
+#
+#   1. cp .env.example .env        (then fill in the two secrets; see the comments in that file)
+#   2. docker compose up -d --build
+#   3. open http://localhost:4000
+#
+# Stop it:            docker compose down          (your data stays in the volumes)
+# Delete all data:    docker compose down -v       (removes the database and uploaded files!)
+# Watch the logs:     docker compose logs -f app
+name: mindmesh
+
+services:
+  mongo:
+    image: mongo:7
+    restart: unless-stopped
+    volumes:
+      - mindmesh-db:/data/db
+    healthcheck:
+      test: ['CMD', 'mongosh', '--quiet', '--eval', "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 20s
+    # No "ports:" on purpose: this database has no password, so it is reachable only by the app
+    # over the private compose network and never from your computer's network.
+
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      mongo:
+        condition: service_healthy
+    ports:
+      - '${APP_PORT:-4000}:4000'
+    environment:
+      NODE_ENV: production
+      MONGODB_URI: mongodb://mongo:27017/mindmesh
+      CLIENT_ORIGIN: ${CLIENT_ORIGIN:-http://localhost:4000}
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:?Set JWT_ACCESS_SECRET in the .env file (see .env.example)}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?Set JWT_REFRESH_SECRET in the .env file (see .env.example)}
+      TRUST_PROXY: ${TRUST_PROXY:-false}
+      # A plain MongoDB has no Atlas Vector Search, so similarity is computed inside the app.
+      VECTOR_SEARCH: local
+      # Optional: without a key the app runs, but the assistant shows a setup message.
+      AI_PROVIDER: ${AI_PROVIDER:-anthropic}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      AI_MODEL: ${AI_MODEL:-claude-opus-5-5}
+      EMBEDDING_PROVIDER: ${EMBEDDING_PROVIDER:-voyage}
+      VOYAGE_API_KEY: ${VOYAGE_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+    volumes:
+      - mindmesh-uploads:/app/server/uploads
+
+volumes:
+  mindmesh-db:
+  mindmesh-uploads:
