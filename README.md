@@ -57,6 +57,7 @@ Each theme has its own typography, surfaces, navigation and component shapes, no
 | **Markdown downloads** | **Download .md** on any note saves it as a Markdown file (title, tags and body, with formatting, lists, code and links), including text you typed a moment ago. **Download** in the assistant saves a whole conversation, with timestamps, answer modes and the sources each answer cited. Files are built on the server from your own data only. |
 | **Save to Vault** | One click turns an assistant answer into an editable note: the Markdown becomes rich text, your question is quoted, and cited sources are listed with links. Saving twice returns the same note. |
 | **Timeline** | A history of notes written, documents and links added, connections made, topics searched, questions asked, items revisited, flashcard review sessions and quizzes taken (with scores), with type and date filters and a 12-week activity map. |
+| **Offline and error handling** | A small banner tells you when you're offline and confirms when you're back. Notes you type while offline stay on screen and save by themselves when the connection returns. If the server can't be reached at start-up you stay signed in and can retry, instead of being sent to the sign-in page. Unknown addresses show a friendly 404 inside the app with a search box pre-filled from the address. |
 | **Settings** | Profile, account, theme, reduced motion, AI preferences, live AI and index status, re-indexing, library defaults, password change, sessions and sign-out-everywhere, account deletion. |
 
 ## Technology stack
@@ -256,7 +257,7 @@ mindmesh/
 ## Testing and quality checks
 
 ```bash
-npm test                    # API tests (98) + component tests (18)
+npm test                    # API tests (98) + component tests (42)
 npm test -w server          # API only: node:test + supertest + in-memory MongoDB
 npm test -w client          # components only: Vitest + Testing Library (jsdom)
 npm run dev & npm run check:ui

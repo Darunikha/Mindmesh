@@ -6,11 +6,14 @@ export const AuthContext = createContext(null);
 
 /**
  * status: 'loading' while restoring a session on boot, then 'authenticated' or 'anonymous'.
+ * 'unreachable' means the server could not be contacted, so we don't know yet whether the
+ * user is signed in. They are not sent to the sign-in page for that; they can retry.
  */
 export function AuthProvider({ children }) {
   const [status, setStatus] = useState('loading');
   const [user, setUser] = useState(null);
   const [sessionNotice, setSessionNotice] = useState(null);
+  const [bootTick, setBootTick] = useState(0);
 
   const clear = useCallback(() => {
     setAccessToken(null);
@@ -31,14 +34,27 @@ export function AuthProvider({ children }) {
         })
         .catch((err) => {
           if (cancelled) return;
-          if (err.status !== 401 && attempt === 0) setTimeout(() => restore(1), 1500);
-          else clear();
+          if (err.status === 401) return clear();
+          if (attempt === 0) return setTimeout(() => restore(1), 1500);
+          return setStatus('unreachable');
         });
     restore(0);
     return () => {
       cancelled = true;
     };
-  }, [clear]);
+  }, [clear, bootTick]);
+
+  const retryRestore = useCallback(() => {
+    setStatus('loading');
+    setBootTick((n) => n + 1);
+  }, []);
+
+  // Try again by itself as soon as the connection comes back.
+  useEffect(() => {
+    if (status !== 'unreachable') return undefined;
+    window.addEventListener('online', retryRestore);
+    return () => window.removeEventListener('online', retryRestore);
+  }, [status, retryRestore]);
 
   useEffect(() => {
     setSessionLostHandler((err) => {
@@ -86,8 +102,9 @@ export function AuthProvider({ children }) {
       logout,
       logoutEverywhere,
       signOutLocally: clear,
+      retryRestore,
     }),
-    [status, user, sessionNotice, login, register, logout, logoutEverywhere, clear]
+    [status, user, sessionNotice, login, register, logout, logoutEverywhere, clear, retryRestore]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

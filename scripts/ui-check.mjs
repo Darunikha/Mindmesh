@@ -90,6 +90,7 @@ const PAGES = (s) => [
   { name: 'review', path: '/flashcards' },
   { name: 'quiz', path: '/quiz' },
   { name: 'settings', path: '/settings/ai' },
+  { name: 'notfound', path: '/no-such-page' },
 ];
 
 const OVERFLOW_PROBE = () => {

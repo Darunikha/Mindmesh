@@ -75,13 +75,13 @@ export default function NoteView({ resource, onChange, autoFocusTitle, renderSta
   useEffect(() => {
     renderStatus?.(
       <>
-        <SaveIndicator state={autosave.state} lastSavedAt={autosave.lastSavedAt} onRetry={autosave.retry} />
+        <SaveIndicator state={autosave.state} lastSavedAt={autosave.lastSavedAt} onRetry={autosave.retry} error={autosave.error} />
         <Button variant="ghost" size="sm" icon={Download} loading={downloading} onClick={downloadMarkdown} aria-label="Download .md file of this note" title="Download this note as a Markdown file">
           <span className="hidden sm:inline">Download .md</span>
         </Button>
       </>
     );
-  }, [autosave.state, autosave.lastSavedAt, autosave.retry, renderStatus, downloading, downloadMarkdown]);
+  }, [autosave.state, autosave.lastSavedAt, autosave.retry, autosave.error, renderStatus, downloading, downloadMarkdown]);
 
   const reloadLatest = async () => {
     autosave.discardPending();

@@ -4,7 +4,8 @@ import { relativeTime } from '../../lib/format.js';
 import { cn } from '../../lib/cn.js';
 
 /** Live, screen-reader-announced autosave status. */
-export default function SaveIndicator({ state, lastSavedAt, onRetry }) {
+export default function SaveIndicator({ state, lastSavedAt, onRetry, error }) {
+  const offline = error?.code === 'OFFLINE' || error?.code === 'NETWORK';
   const [, tick] = useState(0);
   useEffect(() => {
     const t = setInterval(() => tick((n) => n + 1), 15000);
@@ -15,7 +16,7 @@ export default function SaveIndicator({ state, lastSavedAt, onRetry }) {
     saved: { icon: Check, text: lastSavedAt ? `Saved ${relativeTime(lastSavedAt)}` : 'All changes saved', cls: 'text-ink-faint' },
     dirty: { icon: PencilLine, text: 'Unsaved changes', cls: 'text-ink-muted' },
     saving: { icon: Loader2, text: 'Saving…', cls: 'text-ink-muted', spin: true },
-    error: { icon: CloudOff, text: 'Not saved', cls: 'text-danger' },
+    error: { icon: CloudOff, text: offline ? 'Offline, will retry' : 'Not saved', cls: 'text-danger' },
     conflict: { icon: AlertTriangle, text: 'Edited elsewhere', cls: 'text-danger' },
   }[state];
   const Icon = view.icon;

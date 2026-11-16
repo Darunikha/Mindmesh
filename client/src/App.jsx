@@ -13,6 +13,7 @@ import SettingsPage from './pages/settings/SettingsPage.jsx';
 import NotFoundPage from './pages/NotFoundPage.jsx';
 import Skeleton from './components/ui/Skeleton.jsx';
 import TitleManager from './components/layout/TitleManager.jsx';
+import OfflineBanner from './components/layout/OfflineBanner.jsx';
 
 // Library pages (and the rich-text editor) load on demand to keep the first load small.
 const VaultPage = lazy(() => import('./pages/vault/VaultPage.jsx'));
@@ -42,6 +43,7 @@ export default function App() {
   return (
     <>
       <TitleManager />
+      <OfflineBanner />
       <Routes>
         <Route element={<PublicOnly />}>
           <Route path="/login" element={<LoginPage />} />
@@ -74,10 +76,9 @@ export default function App() {
             <Route path="/timeline" element={page(<TimelinePage />)} />
             <Route path="/flashcards" element={page(<FlashcardsPage />)} />
             <Route path="/quiz" element={page(<QuizPage />)} />
+            <Route path="*" element={<NotFoundPage />} />
           </Route>
         </Route>
-
-        <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </>
   );

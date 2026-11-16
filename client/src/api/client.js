@@ -21,6 +21,19 @@ export class ApiRequestError extends Error {
   }
 }
 
+/**
+ * The error for a request that never reached the server. When the browser knows it is offline
+ * the message says so, rather than blaming the server.
+ */
+export function networkError(action = 'reach the Mindmesh server') {
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+    return new ApiRequestError(0, "You're offline. Reconnect to the internet and try again.", 'OFFLINE');
+  }
+  return new ApiRequestError(0, `Could not ${action}. Check your connection and try again.`, 'NETWORK');
+}
+
+export const isNetworkError = (err) => err?.code === 'NETWORK' || err?.code === 'OFFLINE';
+
 export function setAccessToken(token) {
   accessToken = token;
 }
@@ -56,7 +69,7 @@ async function raw(path, { method = 'GET', body, headers = {}, signal } = {}) {
     });
   } catch (err) {
     if (err.name === 'AbortError') throw err;
-    throw new ApiRequestError(0, 'Could not reach the Mindmesh server. Check your connection and try again.', 'NETWORK');
+    throw networkError();
   }
   const data = await parse(res);
   if (!res.ok) {
@@ -131,10 +144,16 @@ export const http = {
 export async function fetchBlob(path, { signal } = {}) {
   const attempt = () =>
     fetch(`${BASE}${path}`, { credentials: 'include', signal, headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {} });
-  let res = await attempt();
-  if (res.status === 401) {
-    await refreshSession();
+  let res;
+  try {
     res = await attempt();
+    if (res.status === 401) {
+      await refreshSession();
+      res = await attempt();
+    }
+  } catch (err) {
+    if (err.name === 'AbortError' || err instanceof ApiRequestError) throw err;
+    throw networkError();
   }
   if (!res.ok) {
     const data = await parse(res);
@@ -169,7 +188,7 @@ export function uploadWithProgress(path, formData, { onProgress, signal } = {}) 
           reject(new ApiRequestError(xhr.status, e.message || `Upload failed (${xhr.status})`, e.code || 'ERROR', e.details));
         }
       };
-      xhr.onerror = () => reject(new ApiRequestError(0, 'The upload was interrupted. Check your connection and try again.', 'NETWORK'));
+      xhr.onerror = () => reject(networkError('finish the upload'));
       xhr.onabort = () => reject(new DOMException('Upload cancelled', 'AbortError'));
       signal?.addEventListener('abort', () => xhr.abort(), { once: true });
       xhr.send(formData);
@@ -217,7 +236,7 @@ export async function streamSse(path, body, { onEvent, signal } = {}) {
     }
   } catch (err) {
     if (err.name === 'AbortError' || err instanceof ApiRequestError) throw err;
-    throw new ApiRequestError(0, 'Could not reach the Mindmesh server. Check your connection and try again.', 'NETWORK');
+    throw networkError();
   }
 
   if (!res.ok) {

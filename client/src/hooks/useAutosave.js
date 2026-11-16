@@ -19,6 +19,7 @@ export function useAutosave(save, { delay = 900 } = {}) {
   const inFlight = useRef(null);
   const saveRef = useRef(save);
   const stateRef = useRef(state);
+  const errorRef = useRef(null);
   saveRef.current = save;
   stateRef.current = state;
 
@@ -38,6 +39,7 @@ export function useAutosave(save, { delay = 900 } = {}) {
       } catch (err) {
         // Put the failed changes back so the next attempt includes them.
         pending.current = { ...patch, ...(pending.current || {}) };
+        errorRef.current = err;
         setError(err);
         setState(err?.code === 'NOTE_CONFLICT' ? 'conflict' : 'error');
       } finally {
@@ -90,6 +92,15 @@ export function useAutosave(save, { delay = 900 } = {}) {
       if (pending.current && stateRef.current !== 'conflict') run();
     };
   }, [run]);
+
+  // A save that failed only because the network was down is retried when it comes back.
+  useEffect(() => {
+    const onOnline = () => {
+      if (stateRef.current === 'error' && (errorRef.current?.code === 'NETWORK' || errorRef.current?.code === 'OFFLINE')) retry();
+    };
+    window.addEventListener('online', onOnline);
+    return () => window.removeEventListener('online', onOnline);
+  }, [retry]);
 
   return { state, lastSavedAt, error, markDirty, flush, retry, discardPending, hasUnsaved };
 }
