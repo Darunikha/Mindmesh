@@ -1,0 +1,41 @@
+# Dependabot opens pull requests when dependencies have updates or security fixes.
+# Every pull request runs the CI workflow (tests + build), so a green check means the update is safe to merge.
+# Docs: https://docs.github.com/en/code-security/dependabot/working-with-dependabot/dependabot-options-reference
+version: 2
+
+updates:
+  # JavaScript packages for the whole repo. The root lockfile covers both workspaces (client and server).
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    # Small updates are bundled into one pull request each week so the list stays short.
+    # Major versions (which can break things) always get their own pull request.
+    groups:
+      production-dependencies:
+        dependency-type: production
+        update-types: [minor, patch]
+      development-dependencies:
+        dependency-type: development
+        update-types: [minor, patch]
+
+  # Versions of the actions used in .github/workflows.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    groups:
+      github-actions:
+        patterns: ['*']
+
+  # The Node.js base image in the Dockerfile.
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: monthly
+    ignore:
+      # Node's odd-numbered releases are short-lived; move between long-term-support versions deliberately.
+      - dependency-name: node
+        update-types: [version-update:semver-major]

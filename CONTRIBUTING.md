@@ -47,6 +47,11 @@ CI runs the tests and the build on every push and pull request.
 - Component tests sit next to the code as `*.test.jsx` and use Vitest and Testing Library.
 - New behaviour needs a test. A bug fix needs a test that fails without the fix.
 
+## Code style and dependency updates
+
+- `.editorconfig` sets the basics (UTF-8, LF line endings, 2-space indents, final newline). Most editors apply it automatically; VS Code needs the "EditorConfig" extension.
+- **Dependabot** opens pull requests for dependency updates: small updates are grouped weekly, major versions come separately. They run the same CI checks as any other pull request, so only merge a green one, and read the release notes for major versions.
+
 ## Pull requests
 
 - Keep each pull request focused on one change, with a clear title.
