@@ -342,3 +342,86 @@ describe('conversations', () => {
     assert.ok(convo.summary && convo.summaryThrough);
   });
 });
+
+describe('pinned conversations', () => {
+  const setDate = (id, daysAgo) => Conversation.updateOne({ _id: id }, { $set: { lastMessageAt: new Date(Date.now() - daysAgo * 86400000) } });
+  const titles = (res) => res.body.conversations.map((c) => c.title);
+
+  it('pins and unpins, and lists pinned conversations first', async () => {
+    const u = await makeUser(ctx.app);
+    const mk = async (title, daysAgo) => {
+      const c = (await u.post('/api/conversations', { title })).body.conversation;
+      await setDate(c.id, daysAgo);
+      return c;
+    };
+    const newest = await mk('Newest', 0);
+    await mk('Middle', 2);
+    const oldest = await mk('Oldest', 10);
+    assert.equal(newest.pinned, false);
+    assert.deepEqual(titles(await u.get('/api/conversations')), ['Newest', 'Middle', 'Oldest']);
+
+    const pinned = await u.patch(`/api/conversations/${oldest.id}`, { pinned: true });
+    assert.equal(pinned.status, 200);
+    assert.equal(pinned.body.conversation.pinned, true);
+    assert.equal(pinned.body.conversation.title, 'Oldest', 'pinning leaves the title alone');
+    assert.deepEqual(titles(await u.get('/api/conversations')), ['Oldest', 'Newest', 'Middle'], 'pinned first, even though it is the oldest');
+    assert.equal((await u.get(`/api/conversations/${oldest.id}`)).body.conversation.pinned, true);
+
+    const unpinned = await u.patch(`/api/conversations/${oldest.id}`, { pinned: false });
+    assert.equal(unpinned.body.conversation.pinned, false);
+    assert.deepEqual(titles(await u.get('/api/conversations')), ['Newest', 'Middle', 'Oldest']);
+  });
+
+  it('stays pinned after new messages, and keeps the title and mode untouched', async () => {
+    const u = await makeUser(ctx.app);
+    const c = await newConversation(u);
+    await u.patch(`/api/conversations/${c.id}`, { pinned: true });
+    assert.equal((await send(u, c.id, 'hello there')).status, 200);
+    const after = (await u.get(`/api/conversations/${c.id}`)).body.conversation;
+    assert.equal(after.pinned, true);
+    assert.equal(after.messageCount, 2);
+  });
+
+  it('respects search, and pinned conversations are not repeated on later pages', async () => {
+    const u = await makeUser(ctx.app);
+    const make = async (title, daysAgo, pin) => {
+      const c = (await u.post('/api/conversations', { title })).body.conversation;
+      await setDate(c.id, daysAgo);
+      if (pin) await u.patch(`/api/conversations/${c.id}`, { pinned: true });
+      return c;
+    };
+    await make('Pinned physics', 30, true);
+    await make('Chat A', 1);
+    await make('Chat B', 2);
+    await make('Chat C', 3);
+
+    const first = await u.get('/api/conversations?limit=2');
+    assert.deepEqual(titles(first), ['Pinned physics', 'Chat A', 'Chat B']);
+    assert.equal(first.body.hasMore, true);
+    const cursor = first.body.conversations.at(-1).lastMessageAt;
+    const second = await u.get(`/api/conversations?limit=2&before=${encodeURIComponent(cursor)}`);
+    assert.deepEqual(titles(second), ['Chat C'], 'no pinned repeat');
+    assert.equal(second.body.hasMore, false);
+
+    assert.deepEqual(titles(await u.get('/api/conversations?q=physics')), ['Pinned physics']);
+    assert.deepEqual(titles(await u.get('/api/conversations?q=chat')), ['Chat A', 'Chat B', 'Chat C']);
+  });
+
+  it('limits pins to 20, lets you re-pin one that is already pinned, and keeps pins private', async () => {
+    const u = await makeUser(ctx.app);
+    const other = await makeUser(ctx.app);
+    const ids = [];
+    for (let i = 0; i < 21; i++) ids.push((await newConversation(u)).id);
+    for (const id of ids.slice(0, 20)) assert.equal((await u.patch(`/api/conversations/${id}`, { pinned: true })).status, 200);
+    const over = await u.patch(`/api/conversations/${ids[20]}`, { pinned: true });
+    assert.equal(over.status, 409);
+    assert.equal(over.body.error.code, 'PIN_LIMIT');
+    assert.equal((await u.patch(`/api/conversations/${ids[0]}`, { pinned: true })).status, 200, 'already pinned is fine');
+    assert.equal((await u.patch(`/api/conversations/${ids[0]}`, { pinned: false })).status, 200);
+    assert.equal((await u.patch(`/api/conversations/${ids[20]}`, { pinned: true })).status, 200, 'room again after unpinning');
+
+    assert.equal((await other.patch(`/api/conversations/${ids[1]}`, { pinned: true })).status, 404);
+    assert.equal((await other.get('/api/conversations')).body.conversations.length, 0);
+    assert.equal((await u.patch(`/api/conversations/${ids[1]}`, { pinned: 'yes' })).status, 400);
+  });
+});

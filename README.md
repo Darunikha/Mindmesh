@@ -49,7 +49,7 @@ Each theme has its own typography, surfaces, navigation and component shapes, no
 | **Accounts and themes** | Sign up, onboard (name, theme, interests, default AI mode), and choose between three complete visual identities: **The Library** (warm editorial), **The Studio** (bright modular) and **The Lab** (dark research instrument). Your theme is saved to your account. |
 | **Knowledge Vault** | Rich-text notes with autosave and conflict detection; uploads of PDF, DOCX, TXT, MD, CSV, JSON, HTML and RTF, with background text extraction; saved web links (title, description, favicon, readable text); pinning; grid and list views; recent items; **bulk actions**: press Select, tick several items, then pin, unpin, move, tag or delete them together (deleting asks first). |
 | **Organisation** | Nested collections (3 levels) and tags. Deleting a collection or tag never deletes your items. |
-| **AI assistant** | Streaming chat with **General AI** (model knowledge) and **My Knowledge** (retrieval-augmented, with inline citations to your sources), switchable mid-conversation. Conversation history, rename and delete, copy, regenerate, stop, follow-up suggestions, Markdown and highlighted code. |
+| **AI assistant** | Streaming chat with **General AI** (model knowledge) and **My Knowledge** (retrieval-augmented, with inline citations to your sources), switchable mid-conversation. Conversation history with search, rename, delete and **pinning** (up to 20 pinned chats stay at the top), copy, regenerate, stop, follow-up suggestions, Markdown and highlighted code. |
 | **Quick jump** | Press **Ctrl+K** (or **Cmd+K**) anywhere, or use the Quick jump button, to open a small menu. Type to find a page, or one of your notes, documents, links, collections or topics, then use the arrow keys and Enter to go there. It always offers a full search for what you typed. |
 | **Smart Search** | One search over titles, full text and meaning, with filters (type, collection, tags, date), sorting, highlighted passages, type-ahead suggestions and recent searches. |
 | **Knowledge Graph** | Interactive React Flow graph of items, topics (tags) and collections. Drag, zoom, search, filter, focus on neighbours, connect items by dragging, and review AI-suggested connections (accept or dismiss). |
@@ -258,7 +258,7 @@ mindmesh/
 ## Testing and quality checks
 
 ```bash
-npm test                    # API tests (101) + component tests (60)
+npm test                    # API tests (105) + component tests (66)
 npm test -w server          # API only: node:test + supertest + in-memory MongoDB
 npm test -w client          # components only: Vitest + Testing Library (jsdom)
 npm run dev & npm run check:ui

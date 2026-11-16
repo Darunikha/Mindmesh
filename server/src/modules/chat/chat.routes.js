@@ -35,7 +35,7 @@ const listQuery = z.object({
 });
 const createSchema = z.object({ title: z.string().trim().min(1).max(120).optional(), mode: z.enum(CHAT_MODES).optional() }).strict();
 const updateSchema = z
-  .object({ title: z.string().trim().min(1, 'Title cannot be empty').max(120).optional(), mode: z.enum(CHAT_MODES).optional() })
+  .object({ title: z.string().trim().min(1, 'Title cannot be empty').max(120).optional(), mode: z.enum(CHAT_MODES).optional(), pinned: z.boolean().optional() })
   .strict()
   .refine((v) => Object.keys(v).length, 'Nothing to update');
 const sendSchema = z

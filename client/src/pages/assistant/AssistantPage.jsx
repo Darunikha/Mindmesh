@@ -312,6 +312,17 @@ export default function AssistantPage() {
     }
   };
 
+  const togglePin = async (c) => {
+    try {
+      const { conversation: updated } = await conversationsApi.update(c.id, { pinned: !c.pinned });
+      setConversations((cs) => cs.map((x) => (x.id === c.id ? { ...x, ...updated } : x)));
+      if (conversation?.id === c.id) setConversation((cur) => ({ ...cur, pinned: updated.pinned }));
+      toast.success(updated.pinned ? 'Conversation pinned' : 'Conversation unpinned');
+    } catch (err) {
+      toast.error(err.message);
+    }
+  };
+
   const confirmDelete = async () => {
     const target = toDelete;
     setToDelete(null);
@@ -346,6 +357,7 @@ export default function AssistantPage() {
             navigate('/assistant');
           }}
           onRename={rename}
+          onPin={togglePin}
           onDelete={setToDelete}
           onNavigate={() => setListOpen(false)}
         />
@@ -368,7 +380,7 @@ export default function AssistantPage() {
           )}
         </header>
 
-        <div ref={scrollRef} onScroll={onScroll} className="min-h-0 flex-1 overflow-y-auto pr-1" aria-live="polite" aria-relevant="additions">
+        <div ref={scrollRef} onScroll={onScroll} className="min-h-0 flex-1 overflow-y-auto pr-1" role="log" aria-label="Conversation messages" tabIndex={0} aria-live="polite" aria-relevant="additions">
           {loadState === 'loading' && (
             <div className="space-y-6 py-4">
               <Skeleton className="ml-auto h-12 w-2/3" />

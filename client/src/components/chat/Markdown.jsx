@@ -54,7 +54,7 @@ function CodeBlock({ children, ...props }) {
           {copied ? 'Copied' : 'Copy'}
         </button>
       </div>
-      <pre {...props}>{children}</pre>
+      <pre tabIndex={0} {...props}>{children}</pre>
     </div>
   );
 }

@@ -13,6 +13,7 @@ export function serializeConversation(c) {
     id: String(c._id),
     title: c.title,
     titleLocked: Boolean(c.titleLocked),
+    pinned: Boolean(c.pinned),
     mode: c.mode,
     messageCount: c.messageCount,
     lastMessageAt: c.lastMessageAt,
@@ -64,12 +65,18 @@ export async function findOwnedConversation(userId, id) {
   return c;
 }
 
+export const MAX_PINNED = 20;
+
+/**
+ * Pinned conversations come first (all of them, newest first), then the rest, newest first.
+ * Paging with `before` only walks the unpinned ones, so pinned chats are not repeated on later pages.
+ */
 export async function listConversations(userId, { q, limit = 50, before } = {}) {
-  const filter = { user: userId };
-  if (q) filter.title = { $regex: escapeRegex(q), $options: 'i' };
-  if (before) filter.lastMessageAt = { $lt: new Date(before) };
-  const items = await Conversation.find(filter).sort({ lastMessageAt: -1 }).limit(limit + 1).lean();
-  return { conversations: items.slice(0, limit).map(serializeConversation), hasMore: items.length > limit };
+  const title = q ? { title: { $regex: escapeRegex(q), $options: 'i' } } : {};
+  const pinned = before ? [] : await Conversation.find({ user: userId, pinned: true, ...title }).sort({ lastMessageAt: -1 }).limit(MAX_PINNED).lean();
+  const rest = { user: userId, pinned: { $ne: true }, ...title, ...(before ? { lastMessageAt: { $lt: new Date(before) } } : {}) };
+  const items = await Conversation.find(rest).sort({ lastMessageAt: -1 }).limit(limit + 1).lean();
+  return { conversations: [...pinned, ...items.slice(0, limit)].map(serializeConversation), hasMore: items.length > limit };
 }
 
 export async function createConversation(userId, { title, mode = 'general' } = {}) {
@@ -89,8 +96,12 @@ export async function getConversation(userId, id) {
   return { conversation: serializeConversation(c), messages: messages.map(serializeMessage) };
 }
 
-export async function updateConversation(userId, id, { title, mode }) {
+export async function updateConversation(userId, id, { title, mode, pinned }) {
   const c = await findOwnedConversation(userId, id);
+  if (pinned === true && !c.pinned && (await Conversation.countDocuments({ user: userId, pinned: true })) >= MAX_PINNED) {
+    throw new ApiError(409, `You can pin up to ${MAX_PINNED} conversations. Unpin one first.`, 'PIN_LIMIT');
+  }
+  if (pinned !== undefined) c.pinned = pinned;
   if (title !== undefined) {
     c.title = title;
     c.titleLocked = true;

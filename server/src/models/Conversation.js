@@ -9,6 +9,8 @@ const conversationSchema = new mongoose.Schema(
     title: { type: String, trim: true, maxlength: 120, default: 'New conversation' },
     /** True once the user renamed it; automatic titles never overwrite a user's title. */
     titleLocked: { type: Boolean, default: false },
+    /** Pinned conversations are listed first. */
+    pinned: { type: Boolean, default: false },
     /** Mode of the most recent message; new messages default to it. */
     mode: { type: String, enum: CHAT_MODES, default: 'general' },
     messageCount: { type: Number, default: 0 },
@@ -23,5 +25,6 @@ const conversationSchema = new mongoose.Schema(
 );
 
 conversationSchema.index({ user: 1, lastMessageAt: -1 });
+conversationSchema.index({ user: 1, pinned: 1, lastMessageAt: -1 });
 
 export default mongoose.model('Conversation', conversationSchema);

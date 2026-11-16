@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { NavLink } from 'react-router-dom';
-import { Check, MessageSquarePlus, Pencil, Search, Trash2, X } from 'lucide-react';
+import { Check, MessageSquarePlus, Pencil, Pin, PinOff, Search, Trash2, X } from 'lucide-react';
 import Button from '../ui/Button.jsx';
 import Skeleton from '../ui/Skeleton.jsx';
 import { cn } from '../../lib/cn.js';
@@ -17,7 +17,7 @@ function groupLabel(date) {
   return 'Older';
 }
 
-function Row({ c, onRename, onDelete, onNavigate }) {
+function Row({ c, onRename, onDelete, onPin, onNavigate }) {
   const [editing, setEditing] = useState(false);
   const [title, setTitle] = useState(c.title);
 
@@ -52,15 +52,21 @@ function Row({ c, onRename, onDelete, onNavigate }) {
         onClick={onNavigate}
         className={({ isActive }) =>
           cn(
-            'block truncate rounded-control py-2 pr-16 pl-3 font-ui text-sm transition-colors',
+            'block truncate rounded-control py-2 pr-[4.75rem] pl-3 font-ui text-sm transition-colors',
             isActive ? 'bg-accent-soft font-semibold text-ink' : 'text-ink-muted hover:bg-sunken hover:text-ink'
           )
         }
       >
         {c.generating && <span className="mr-1.5 inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-accent align-middle" aria-label="Generating" />}
+        {c.pinned && <Pin size={12} className="mr-1.5 inline-block align-[-1px] text-accent" aria-label="Pinned" />}
         {c.title}
       </NavLink>
-      <div className="absolute top-1/2 right-1 flex -translate-y-1/2 gap-0.5 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100">
+      <div className="absolute top-1/2 right-1 flex -translate-y-1/2 gap-0.5 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100 [@media(hover:none)]:opacity-100">
+        {onPin && (
+          <button type="button" onClick={() => onPin(c)} className="rounded p-1 text-ink-faint hover:bg-surface hover:text-ink" aria-label={`${c.pinned ? 'Unpin' : 'Pin'} ${c.title}`} aria-pressed={Boolean(c.pinned)}>
+            {c.pinned ? <PinOff size={13} /> : <Pin size={13} />}
+          </button>
+        )}
         <button type="button" onClick={() => setEditing(true)} className="rounded p-1 text-ink-faint hover:bg-surface hover:text-ink" aria-label={`Rename ${c.title}`}>
           <Pencil size={13} />
         </button>
@@ -72,14 +78,17 @@ function Row({ c, onRename, onDelete, onNavigate }) {
   );
 }
 
-export default function ConversationList({ conversations, loading, onNew, onRename, onDelete, onNavigate }) {
+export default function ConversationList({ conversations, loading, onNew, onRename, onDelete, onPin, onNavigate }) {
   const [q, setQ] = useState('');
   const groups = useMemo(() => {
-    const list = (conversations || []).filter((c) => !q || c.title.toLowerCase().includes(q.toLowerCase()));
+    // Newest first, whatever order the list was loaded or updated in (e.g. right after unpinning).
+    const list = (conversations || []).filter((c) => !q || c.title.toLowerCase().includes(q.toLowerCase())).sort((a, b) => new Date(b.lastMessageAt) - new Date(a.lastMessageAt));
     const out = [];
-    for (const c of list) {
+    const pinned = list.filter((c) => c.pinned);
+    if (pinned.length) out.push({ label: 'Pinned', items: pinned });
+    for (const c of list.filter((x) => !x.pinned)) {
       const label = groupLabel(c.lastMessageAt);
-      if (!out.length || out.at(-1).label !== label) out.push({ label, items: [] });
+      if (out.at(-1)?.label !== label) out.push({ label, items: [] });
       out.at(-1).items.push(c);
     }
     return out;
@@ -112,7 +121,7 @@ export default function ConversationList({ conversations, loading, onNew, onRena
               <p className="mm-eyebrow mb-1 px-1">{g.label}</p>
               <div className="space-y-0.5">
                 {g.items.map((c) => (
-                  <Row key={c.id} c={c} onRename={onRename} onDelete={onDelete} onNavigate={onNavigate} />
+                  <Row key={c.id} c={c} onRename={onRename} onDelete={onDelete} onPin={onPin} onNavigate={onNavigate} />
                 ))}
               </div>
             </div>

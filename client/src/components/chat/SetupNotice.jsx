@@ -13,7 +13,7 @@ export default function SetupNotice({ status }) {
           <p className="mt-1">
             Mindmesh never invents answers, so chat stays off until an AI provider is configured. Add an API key to <code className="font-mono text-xs">server/.env</code> and restart the server:
           </p>
-          <pre className="mt-3 overflow-x-auto rounded-control bg-sunken p-3 font-mono text-xs text-ink">
+          <pre tabIndex={0} role="region" aria-label="Example server configuration" className="mt-3 overflow-x-auto rounded-control bg-sunken p-3 font-mono text-xs text-ink">
             {`AI_PROVIDER=anthropic\nANTHROPIC_API_KEY=sk-ant-...\n\n# Optional, for semantic search in My Knowledge mode\nEMBEDDING_PROVIDER=voyage\nVOYAGE_API_KEY=pa-...`}
           </pre>
           {status?.chat?.reason && <p className="mt-2 text-xs text-ink-faint">Server says: {status.chat.reason}</p>}
