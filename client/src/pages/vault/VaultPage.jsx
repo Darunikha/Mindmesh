@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { FilePlus2, LayoutGrid, Link2, List, Search, SearchX, Upload, X, LibraryBig } from 'lucide-react';
+import { CheckSquare, FilePlus2, LayoutGrid, Link2, List, Search, SearchX, Upload, X, LibraryBig } from 'lucide-react';
 import PageHeader from '../../components/layout/PageHeader.jsx';
 import Button from '../../components/ui/Button.jsx';
 import Alert from '../../components/ui/Alert.jsx';
@@ -9,6 +9,7 @@ import EmptyState from '../../components/ui/EmptyState.jsx';
 import ResourceCard from '../../components/library/ResourceCard.jsx';
 import ResourceList from '../../components/library/ResourceList.jsx';
 import VaultSidebar from '../../components/library/VaultSidebar.jsx';
+import BulkBar from '../../components/library/BulkBar.jsx';
 import UploadDialog from '../../components/library/UploadDialog.jsx';
 import LinkDialog from '../../components/library/LinkDialog.jsx';
 import { TypeBadge } from '../../components/library/Badges.jsx';
@@ -17,6 +18,7 @@ import { libraryApi } from '../../api/library.js';
 import { useLibrary } from '../../context/LibraryContext.jsx';
 import { useTheme } from '../../context/ThemeContext.jsx';
 import { useToast } from '../../context/ToastContext.jsx';
+import { useSelection } from '../../hooks/useSelection.js';
 import { usePreferences } from '../../hooks/usePreferences.js';
 import { useDebouncedValue, useProcessingPoll } from '../../hooks/useProcessingPoll.js';
 import { relativeTime } from '../../lib/format.js';
@@ -104,6 +106,7 @@ export default function VaultPage() {
   const [creating, setCreating] = useState(false);
   const [dragging, setDragging] = useState(false);
   const requestId = useRef(0);
+  const select = useSelection();
 
   const setFilters = useCallback(
     (patch) => {
@@ -131,6 +134,12 @@ export default function VaultPage() {
   }, [debouncedSearch]);
 
   const queryKey = JSON.stringify({ ...filters, sort });
+
+  // A selection only makes sense for the list it was made in.
+  useEffect(() => {
+    select.clear();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [queryKey]);
 
   const load = useCallback(
     async (page = 1) => {
@@ -192,6 +201,13 @@ export default function VaultPage() {
       toast.error(err.message);
       setCreating(false);
     }
+  };
+
+  const onBulkDone = () => {
+    load(1);
+    loadOverview();
+    refreshCollections();
+    refreshTags();
   };
 
   const setView = (v) => {
@@ -338,6 +354,9 @@ export default function VaultPage() {
                   ))}
                 </select>
                 <div className="ml-auto flex items-center gap-2">
+                  <Button size="sm" variant={select.active ? 'primary' : 'secondary'} icon={CheckSquare} aria-pressed={select.active} onClick={() => select.setActive(!select.active)}>
+                    Select
+                  </Button>
                   <label htmlFor="vault-sort" className="sr-only">
                     Sort
                   </label>
@@ -386,7 +405,7 @@ export default function VaultPage() {
             </div>
 
             {/* Pinned + recents when browsing the whole vault */}
-            {!isFiltered && overview && (overview.pinned.length > 0 || overview.recentlyAccessed.length > 0) && (
+            {!select.active && !isFiltered && overview && (overview.pinned.length > 0 || overview.recentlyAccessed.length > 0) && (
               <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
                 <MiniList title="Pinned" items={overview.pinned.slice(0, 5)} />
                 <MiniList title="Recently opened" items={overview.recentlyAccessed.slice(0, 5)} />
@@ -445,11 +464,11 @@ export default function VaultPage() {
                 (view === 'grid' ? (
                   <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
                     {data.items.map((r, i) => (
-                      <ResourceCard key={r.id} resource={r} index={i} />
+                      <ResourceCard key={r.id} resource={r} index={i} select={select} />
                     ))}
                   </div>
                 ) : (
-                  <ResourceList items={data.items} />
+                  <ResourceList items={data.items} select={select} />
                 ))}
 
               {data.hasMore && status !== 'loading' && (
@@ -463,6 +482,9 @@ export default function VaultPage() {
           </div>
         </div>
       )}
+
+      {select.active && <BulkBar select={select} loadedIds={data.items.map((i) => i.id)} onDone={onBulkDone} />}
+      {select.active && <div className="h-28" aria-hidden />}
 
       <UploadDialog
         open={uploadOpen}

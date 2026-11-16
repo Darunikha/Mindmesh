@@ -47,7 +47,7 @@ Each theme has its own typography, surfaces, navigation and component shapes, no
 | Area | What you can do |
 | --- | --- |
 | **Accounts and themes** | Sign up, onboard (name, theme, interests, default AI mode), and choose between three complete visual identities: **The Library** (warm editorial), **The Studio** (bright modular) and **The Lab** (dark research instrument). Your theme is saved to your account. |
-| **Knowledge Vault** | Rich-text notes with autosave and conflict detection; uploads of PDF, DOCX, TXT, MD, CSV, JSON, HTML and RTF, with background text extraction; saved web links (title, description, favicon, readable text); pinning; grid and list views; recent items. |
+| **Knowledge Vault** | Rich-text notes with autosave and conflict detection; uploads of PDF, DOCX, TXT, MD, CSV, JSON, HTML and RTF, with background text extraction; saved web links (title, description, favicon, readable text); pinning; grid and list views; recent items; **bulk actions**: press Select, tick several items, then pin, unpin, move, tag or delete them together (deleting asks first). |
 | **Organisation** | Nested collections (3 levels) and tags. Deleting a collection or tag never deletes your items. |
 | **AI assistant** | Streaming chat with **General AI** (model knowledge) and **My Knowledge** (retrieval-augmented, with inline citations to your sources), switchable mid-conversation. Conversation history, rename and delete, copy, regenerate, stop, follow-up suggestions, Markdown and highlighted code. |
 | **Quick jump** | Press **Ctrl+K** (or **Cmd+K**) anywhere, or use the Quick jump button, to open a small menu. Type to find a page, or one of your notes, documents, links, collections or topics, then use the arrow keys and Enter to go there. It always offers a full search for what you typed. |
@@ -258,7 +258,7 @@ mindmesh/
 ## Testing and quality checks
 
 ```bash
-npm test                    # API tests (98) + component tests (48)
+npm test                    # API tests (101) + component tests (60)
 npm test -w server          # API only: node:test + supertest + in-memory MongoDB
 npm test -w client          # components only: Vitest + Testing Library (jsdom)
 npm run dev & npm run check:ui

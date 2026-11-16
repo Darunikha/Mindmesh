@@ -420,3 +420,62 @@ describe('isolation', () => {
     await assert.rejects(fs.access(absolutePath(stored.file.storageKey)));
   });
 });
+
+describe('bulk actions', () => {
+  const makeNotes = async (u, titles) => Promise.all(titles.map(async (title) => (await u.post('/api/resources/notes', { title })).body.resource.id));
+
+  it('pins, unpins, moves and tags several items at once', async () => {
+    const u = await makeUser(ctx.app);
+    const [a, b, c] = await makeNotes(u, ['A', 'B', 'C']);
+    const col = (await u.post('/api/collections', { name: 'Batch' })).body.collection;
+
+    const pinned = await u.post('/api/resources/bulk', { ids: [a, b], action: 'pin' });
+    assert.equal(pinned.body.affected, 2);
+    assert.equal((await u.get('/api/resources?pinned=true')).body.total, 2);
+    assert.equal((await u.post('/api/resources/bulk', { ids: [a], action: 'unpin' })).body.affected, 1);
+    assert.equal((await u.get('/api/resources?pinned=true')).body.total, 1);
+
+    assert.equal((await u.post('/api/resources/bulk', { ids: [a, b], action: 'move', collectionId: col.id })).body.affected, 2);
+    assert.equal((await u.get(`/api/resources/${a}`)).body.resource.collectionId, col.id);
+    assert.equal((await u.get(`/api/resources/${c}`)).body.resource.collectionId, null);
+    // Moving to "no collection" (null) is allowed
+    assert.equal((await u.post('/api/resources/bulk', { ids: [a], action: 'move', collectionId: null })).body.affected, 1);
+    assert.equal((await u.get(`/api/resources/${a}`)).body.resource.collectionId, null);
+
+    await u.patch(`/api/resources/${b}`, { tags: ['keep'] });
+    assert.equal((await u.post('/api/resources/bulk', { ids: [a, b], action: 'addTags', tags: ['physics', 'keep'] })).status, 200);
+    const names = async (id) => (await u.get(`/api/resources/${id}`)).body.resource.tags.map((t) => t.name).sort();
+    assert.deepEqual(await names(a), ['keep', 'physics']);
+    assert.deepEqual(await names(b), ['keep', 'physics'], 'existing tags stay and are not duplicated');
+    assert.deepEqual(await names(c), []);
+  });
+
+  it('deletes several items, and only your own', async () => {
+    const alice = await makeUser(ctx.app);
+    const bob = await makeUser(ctx.app);
+    const [a1, a2, a3] = await makeNotes(alice, ['one', 'two', 'three']);
+    const [b1] = await makeNotes(bob, ['bobs']);
+
+    const res = await alice.post('/api/resources/bulk', { ids: [a1, a2, b1], action: 'delete' });
+    assert.equal(res.body.affected, 2, "someone else's id is ignored");
+    assert.equal((await alice.get('/api/resources')).body.total, 1);
+    assert.equal((await alice.get(`/api/resources/${a3}`)).status, 200);
+    assert.equal((await bob.get(`/api/resources/${b1}`)).status, 200);
+  });
+
+  it('rejects bad requests and moves into collections you do not own', async () => {
+    const alice = await makeUser(ctx.app);
+    const bob = await makeUser(ctx.app);
+    const [a1] = await makeNotes(alice, ['one']);
+    const bobsCol = (await bob.post('/api/collections', { name: 'Private' })).body.collection;
+
+    assert.equal((await alice.post('/api/resources/bulk', { ids: [], action: 'pin' })).status, 400);
+    assert.equal((await alice.post('/api/resources/bulk', { ids: ['nope'], action: 'pin' })).status, 400);
+    assert.equal((await alice.post('/api/resources/bulk', { ids: [a1], action: 'explode' })).status, 400);
+    assert.equal((await alice.post('/api/resources/bulk', { ids: [a1], action: 'move' })).status, 400, 'move needs a destination');
+    assert.equal((await alice.post('/api/resources/bulk', { ids: [a1], action: 'addTags', tags: [] })).status, 400);
+    assert.equal((await alice.post('/api/resources/bulk', { ids: Array(101).fill(a1), action: 'pin' })).status, 400, 'at most 100 per request');
+    assert.equal((await alice.post('/api/resources/bulk', { ids: [a1], action: 'move', collectionId: bobsCol.id })).status, 400, 'not your collection');
+    assert.equal((await alice.get(`/api/resources/${a1}`)).body.resource.collectionId, null);
+  });
+});

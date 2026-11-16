@@ -7,6 +7,7 @@ import { cn } from '../../lib/cn.js';
 import Highlight from '../discovery/Highlight.jsx';
 import { formatDate, relativeTime } from '../../lib/format.js';
 import { StatusBadge, TypeBadge } from './Badges.jsx';
+import SelectBox, { selectClick } from './SelectBox.jsx';
 import { TYPE_ICONS, TYPE_TINT, resourceDetail, resourcePath } from './resourceMeta.js';
 
 function Favicon({ resource, size = 16 }) {
@@ -67,22 +68,26 @@ function TagLine({ tags }) {
 }
 
 /** Grid card. Each theme gets a different silhouette, not just different colours. */
-export default function ResourceCard({ resource, index = 0 }) {
+export default function ResourceCard({ resource, index = 0, select }) {
   const { theme } = useTheme();
   const { collectionById } = useLibrary();
   const collection = resource.collectionId ? collectionById.get(resource.collectionId) : null;
   const tint = TYPE_TINT[resource.type];
   const Icon = TYPE_ICONS[resource.type];
+  const selecting = Boolean(select?.active);
+  const selected = selecting && select.has(resource.id);
 
   return (
-    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: Math.min(index, 12) * 0.03 }}>
+    <motion.div className="relative" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: Math.min(index, 12) * 0.03 }}>
+      <SelectBox select={select} id={resource.id} title={resource.title} className="top-2 left-2" />
       <Link
         to={resourcePath(resource)}
-        className={cn('mm-card mm-card-interactive group flex h-full flex-col overflow-hidden', theme === 'library' && 'mm-card-ruled')}
+        onClick={selectClick(select, resource.id)}
+        className={cn('mm-card mm-card-interactive group flex h-full flex-col overflow-hidden', theme === 'library' && 'mm-card-ruled', selected && 'ring-2 ring-accent ring-offset-2 ring-offset-bg')}
       >
         {/* ── Library: catalogue card with a coloured spine and catalogue number ── */}
         {theme === 'library' && (
-          <div className="relative flex flex-1 flex-col gap-3 p-5 pl-6">
+          <div className={cn('relative flex flex-1 flex-col gap-3 p-5 pl-6', selecting && 'pt-14')}>
             <span className={cn('absolute top-3 bottom-3 left-0 w-[5px] rounded-r-[2px]', tint.bar)} aria-hidden />
             <div className="flex items-center justify-between gap-2">
               <TypeBadge type={resource.type} />
@@ -148,7 +153,7 @@ export default function ResourceCard({ resource, index = 0 }) {
         {/* ── Lab: instrument readout with a mono header strip ── */}
         {theme === 'lab' && (
           <>
-            <div className="flex items-center justify-between gap-2 border-b border-line bg-sunken/60 px-4 py-2">
+            <div className={cn('flex items-center justify-between gap-2 border-b border-line bg-sunken/60 px-4 py-2', selecting && 'pt-12')}>
               <span className="flex items-center gap-2">
                 <TypeBadge type={resource.type} />
                 <span className="font-mono text-[0.62rem] text-ink-faint">{resource.id.slice(-6)}</span>

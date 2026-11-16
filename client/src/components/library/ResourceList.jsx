@@ -6,13 +6,14 @@ import { cn } from '../../lib/cn.js';
 import { formatDate, relativeTime } from '../../lib/format.js';
 import { StatusBadge, TypeBadge } from './Badges.jsx';
 import { Favicon } from './ResourceCard.jsx';
+import SelectBox, { selectClick } from './SelectBox.jsx';
 import { TYPE_TINT, resourceDetail, resourcePath } from './resourceMeta.js';
 
 /**
  * List view. Library: a ruled card-catalogue ledger. Studio: soft rows with icon chips.
  * Lab: a dense data table with mono columns.
  */
-export default function ResourceList({ items }) {
+export default function ResourceList({ items, select }) {
   const { theme } = useTheme();
   const { collectionById } = useLibrary();
 
@@ -22,6 +23,11 @@ export default function ResourceList({ items }) {
         <table className="w-full min-w-[720px] text-left">
           <thead>
             <tr className="border-b border-line font-mono text-[0.62rem] tracking-[0.14em] text-ink-faint uppercase">
+              {select?.active && (
+                <th className="w-10 px-2 py-2.5 font-medium">
+                  <span className="sr-only">Select</span>
+                </th>
+              )}
               <th className="px-4 py-2.5 font-medium">Type</th>
               <th className="px-4 py-2.5 font-medium">Title</th>
               <th className="px-4 py-2.5 font-medium">Collection</th>
@@ -32,12 +38,17 @@ export default function ResourceList({ items }) {
           </thead>
           <tbody>
             {items.map((r) => (
-              <tr key={r.id} className="group border-b border-line last:border-0 hover:bg-accent-soft">
+              <tr key={r.id} className={cn('group border-b border-line last:border-0 hover:bg-accent-soft', select?.active && select.has(r.id) && 'bg-accent-soft')}>
+                {select?.active && (
+                  <td className="w-10 px-2 py-2.5">
+                    <SelectBox select={select} id={r.id} title={r.title} className="!static !h-7 !w-7 !shadow-none" />
+                  </td>
+                )}
                 <td className="px-4 py-2.5">
                   <TypeBadge type={r.type} />
                 </td>
                 <td className="max-w-[360px] px-4 py-2.5">
-                  <Link to={resourcePath(r)} className="flex items-center gap-2 font-ui text-sm text-ink group-hover:text-accent">
+                  <Link to={resourcePath(r)} onClick={selectClick(select, r.id)} className="flex items-center gap-2 font-ui text-sm text-ink group-hover:text-accent">
                     {r.pinned && <Pin size={11} className="shrink-0 text-accent-3" aria-label="Pinned" />}
                     <span className="truncate">{r.title}</span>
                   </Link>
@@ -62,8 +73,9 @@ export default function ResourceList({ items }) {
       <div className="mm-card mm-card-ruled px-2 py-2 sm:px-4">
         <ul className="divide-y divide-dashed divide-line-strong">
           {items.map((r) => (
-            <li key={r.id}>
-              <Link to={resourcePath(r)} className="group grid grid-cols-[auto_1fr] items-baseline gap-x-4 gap-y-0.5 px-2 py-3.5 sm:grid-cols-[110px_1fr_auto]">
+            <li key={r.id} className={cn('relative', select?.active && 'pl-11', select?.active && select.has(r.id) && 'bg-accent-soft')}>
+              <SelectBox select={select} id={r.id} title={r.title} className="top-3 left-0" />
+              <Link to={resourcePath(r)} onClick={selectClick(select, r.id)} className="group grid grid-cols-[auto_1fr] items-baseline gap-x-4 gap-y-0.5 px-2 py-3.5 sm:grid-cols-[110px_1fr_auto]">
                 <TypeBadge type={r.type} className="row-span-2 sm:row-span-1" />
                 <div className="min-w-0">
                   <p className="flex items-center gap-2 truncate font-display text-[1.2rem] text-ink group-hover:text-accent">
@@ -91,8 +103,9 @@ export default function ResourceList({ items }) {
       {items.map((r) => {
         const tint = TYPE_TINT[r.type];
         return (
-          <li key={r.id}>
-            <Link to={resourcePath(r)} className="mm-card mm-card-interactive flex items-center gap-3 p-3 pr-4">
+          <li key={r.id} className={cn('relative', select?.active && 'pl-11')}>
+            <SelectBox select={select} id={r.id} title={r.title} className="top-1/2 left-0 -translate-y-1/2" />
+            <Link to={resourcePath(r)} onClick={selectClick(select, r.id)} className={cn('mm-card mm-card-interactive flex items-center gap-3 p-3 pr-4', select?.active && select.has(r.id) && 'ring-2 ring-accent')}>
               <span className={cn('flex h-10 w-10 shrink-0 items-center justify-center rounded-[12px]', tint.bg, tint.fg)}>
                 <Favicon resource={r} size={17} />
               </span>
