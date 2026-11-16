@@ -1,0 +1,25 @@
+{
+  "id": "/",
+  "name": "Mindmesh",
+  "short_name": "Mindmesh",
+  "description": "Your AI-powered personal knowledge and learning workspace.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#f6f4f0",
+  "theme_color": "#1d1b26",
+  "categories": ["productivity", "education"],
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ],
+  "shortcuts": [
+    { "name": "Assistant", "url": "/assistant" },
+    { "name": "Review flashcards", "short_name": "Review", "url": "/flashcards" },
+    { "name": "Search", "url": "/search" },
+    { "name": "Knowledge Vault", "short_name": "Vault", "url": "/vault" }
+  ]
+}

@@ -19,6 +19,9 @@ function readStoredTheme() {
 
 function applyTheme(theme) {
   document.documentElement.dataset.theme = theme;
+  // Colour the phone status bar / installed-app title bar to match the theme.
+  const bg = getComputedStyle(document.documentElement).getPropertyValue('--mm-bg').trim();
+  if (bg) document.querySelector('meta[name="theme-color"]')?.setAttribute('content', bg);
   try {
     localStorage.setItem(STORAGE_KEY, theme);
   } catch {

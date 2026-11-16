@@ -45,7 +45,19 @@ export function mountClient(app, distDir) {
     csp,
     express.static(path.join(dist, 'assets'), { immutable: true, maxAge: '365d', index: false, fallthrough: false })
   );
-  app.use(csp, express.static(dist, { index: false, maxAge: '1h' }));
+  app.use(
+    csp,
+    express.static(dist, {
+      index: false,
+      maxAge: '1h',
+      setHeaders(res, file) {
+        const name = path.basename(file);
+        // Browsers must re-check the service worker on every visit, or updates would never arrive.
+        if (name === 'sw.js') res.set({ 'Cache-Control': 'no-cache', 'Content-Type': 'application/javascript; charset=utf-8' });
+        if (name === 'manifest.webmanifest') res.set('Content-Type', 'application/manifest+json; charset=utf-8');
+      },
+    })
+  );
 
   // Client-side routes (/vault/123, /graph, …) all load the app shell.
   app.get(/^(?!\/api(\/|$)).*/, csp, (_req, res) => {

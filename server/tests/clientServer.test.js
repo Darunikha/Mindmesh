@@ -18,6 +18,10 @@ before(async () => {
   await fs.mkdir(path.join(dir, 'assets'));
   await fs.writeFile(path.join(dir, 'index.html'), `<!doctype html><html><head><script>${INLINE}</script></head><body><div id="root"></div></body></html>`);
   await fs.writeFile(path.join(dir, 'assets', 'app-abc123.js'), 'console.log(1)');
+  await fs.writeFile(path.join(dir, 'sw.js'), 'self.addEventListener("fetch", () => {});');
+  await fs.writeFile(path.join(dir, 'manifest.webmanifest'), JSON.stringify({ name: 'Mindmesh' }));
+  await fs.mkdir(path.join(dir, 'icons'));
+  await fs.writeFile(path.join(dir, 'icons', 'icon-192.png'), Buffer.from([0x89, 0x50, 0x4e, 0x47]));
   env.SERVE_CLIENT = true;
   env.CLIENT_DIST = dir;
   app = createApp();
@@ -50,6 +54,23 @@ describe('serving the built client', () => {
     assert.match(asset.headers['cache-control'], /immutable/);
     const missing = await request(app).get('/assets/nope.js');
     assert.equal(missing.status, 404);
+  });
+
+  it('serves the installable-app files with the right headers', async () => {
+    const sw = await request(app).get('/sw.js');
+    assert.equal(sw.status, 200);
+    assert.match(sw.headers['content-type'], /javascript/);
+    assert.equal(sw.headers['cache-control'], 'no-cache', 'browsers must re-check the service worker on every visit');
+    assert.doesNotMatch(sw.headers['cache-control'], /immutable|max-age=[1-9]/);
+
+    const manifest = await request(app).get('/manifest.webmanifest');
+    assert.equal(manifest.status, 200);
+    assert.match(manifest.headers['content-type'], /application\/manifest\+json/);
+    assert.equal(JSON.parse(manifest.text).name, 'Mindmesh');
+
+    const icon = await request(app).get('/icons/icon-192.png');
+    assert.equal(icon.status, 200);
+    assert.match(icon.headers['content-type'], /image\/png/);
   });
 
   it('keeps the API separate: unknown API paths are JSON 404s, not the app shell', async () => {

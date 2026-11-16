@@ -5,7 +5,10 @@ import App from './App.jsx';
 import { ToastProvider } from './context/ToastContext.jsx';
 import { AuthProvider } from './context/AuthContext.jsx';
 import { ThemeProvider } from './context/ThemeContext.jsx';
+import { startPwa } from './pwa.js';
 import './index.css';
+
+startPwa();
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>

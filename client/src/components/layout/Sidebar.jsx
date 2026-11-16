@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { LogOut, Search, Settings } from 'lucide-react';
+import { Download, LogOut, Search, Settings } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { useTheme } from '../../context/ThemeContext.jsx';
 import { cn } from '../../lib/cn.js';
@@ -7,6 +7,7 @@ import Logo from '../theme/Logo.jsx';
 import { NAV_SECTIONS, ROMAN } from './navigation.js';
 import DueBadge from './DueBadge.jsx';
 import { openPalette } from './CommandPalette.jsx';
+import { useInstallPrompt } from '../../hooks/useInstallPrompt.js';
 
 const TINT_BG = {
   accent: 'studio:bg-accent-soft studio:text-accent',
@@ -57,6 +58,7 @@ function ActiveMarker({ active }) {
 export default function Sidebar({ onNavigate }) {
   const { user, logout } = useAuth();
   const { theme } = useTheme();
+  const { canInstall, install } = useInstallPrompt();
 
   return (
     <nav aria-label="Main" className="flex h-full flex-col">
@@ -122,6 +124,19 @@ export default function Sidebar({ onNavigate }) {
       </div>
 
       <div className="border-t border-line p-3 library:mx-2 studio:border-0">
+        {canInstall && (
+          <button
+            type="button"
+            onClick={() => {
+              onNavigate?.();
+              install();
+            }}
+            className={itemClasses(false)}
+          >
+            <NavIcon icon={Download} tint="accent-3" />
+            <span className="flex-1 truncate text-left">Install app</span>
+          </button>
+        )}
         <NavLink to="/settings" onClick={onNavigate} className={({ isActive }) => itemClasses(isActive)}>
           {({ isActive }) => (
             <>

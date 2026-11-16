@@ -59,6 +59,7 @@ Each theme has its own typography, surfaces, navigation and component shapes, no
 | **Save to Vault** | One click turns an assistant answer into an editable note: the Markdown becomes rich text, your question is quoted, and cited sources are listed with links. Saving twice returns the same note. |
 | **Timeline** | A history of notes written, documents and links added, connections made, topics searched, questions asked, items revisited, flashcard review sessions and quizzes taken (with scores), with type and date filters and a 12-week activity map. |
 | **Offline and error handling** | A small banner tells you when you're offline and confirms when you're back. Notes you type while offline stay on screen and save by themselves when the connection returns. If the server can't be reached at start-up you stay signed in and can retry, instead of being sent to the sign-in page. Unknown addresses show a friendly 404 inside the app with a search box pre-filled from the address. |
+| **Installable app** | Mindmesh can be installed like an app on a phone or computer (Chrome, Edge, Android: use the **Install app** button in the sidebar or the browser's install icon; iPhone and iPad: Share, then Add to Home Screen). It opens in its own window with the Mindmesh icon, and its pages open even with no connection. The offline part covers the app itself, not your notes: your notes and chats still come from the server. The service worker caches only public app files and never anything from `/api`, so signing out leaves nothing behind. |
 | **Settings** | Profile, account, theme, reduced motion, AI preferences, live AI and index status, re-indexing, library defaults, password change, sessions and sign-out-everywhere, account deletion. |
 
 ## Technology stack
@@ -100,6 +101,7 @@ Generate each secret with `node -e "console.log(require('crypto').randomBytes(48
 | `npm run build` | Builds the frontend to `client/dist` |
 | `npm run check:ui` | Visual, responsive and accessibility check (needs `npm run dev` running; see [Testing](#testing-and-quality-checks)) |
 | `npm run vector-index -w server` | Creates the Atlas Vector Search index |
+| `node scripts/make-icons.mjs` | Regenerates the app icons in `client/public/icons` (only needed if the logo changes) |
 
 ## Configuration
 
@@ -258,7 +260,7 @@ mindmesh/
 ## Testing and quality checks
 
 ```bash
-npm test                    # API tests (105) + component tests (66)
+npm test                    # API tests (106) + component tests (84)
 npm test -w server          # API only: node:test + supertest + in-memory MongoDB
 npm test -w client          # components only: Vitest + Testing Library (jsdom)
 npm run dev & npm run check:ui
@@ -286,7 +288,7 @@ docker run -p 4000:4000 --env-file server/.env -v mindmesh-uploads:/app/server/u
 The Docker build is **untested** here because Docker isn't installed on the development machine. The same steps run without Docker as shown above.
 
 - Use a hosted MongoDB (Atlas) via `MONGODB_URI`. `USE_IN_MEMORY_DB` is refused in production.
-- Set `NODE_ENV=production`, serve over HTTPS (cookies become `Secure`), set `TRUST_PROXY=true` behind a proxy, and set `CLIENT_ORIGIN` to your site's address.
+- Set `NODE_ENV=production`, serve over HTTPS (cookies become `Secure`, and browsers only install the app and run its service worker over HTTPS; `localhost` also counts), set `TRUST_PROXY=true` behind a proxy, and set `CLIENT_ORIGIN` to your site's address.
 - Persist `UPLOAD_DIR` on a volume, or replace the storage module with an object store.
 - Run one API instance, or move the in-process queues and vector cache to shared infrastructure first (see limitations).
 - **CI:** `.github/workflows/ci.yml` runs the API tests, the component tests and a production build on every push and pull request.
@@ -295,6 +297,7 @@ The Docker build is **untested** here because Docker isn't installed on the deve
 
 - **AI quality hasn't been verified against the live Claude and Voyage APIs in the development environment**, because no keys were available. The adapters follow the official SDK reference and all surrounding logic is tested with doubles. Check answers, citations and suggestion thresholds once keys are configured.
 - **Single-instance design:** background jobs use an in-process queue (durable status, re-queued at boot), and in-process vector search uses an in-memory cache. Both need shared infrastructure (e.g. BullMQ/Redis, Atlas Vector Search) for multiple API instances.
+- **Offline use is limited to the app shell.** Without a connection the app opens and says it is offline, but notes, search and chat need the server; there is no offline editing or sync. Installability was verified with Chromium's own check and a real offline reload, but not on a physical phone or on Safari/iOS.
 - **Local disk** file storage; there's no object-store adapter yet.
 - **No OCR:** scanned PDFs are reported as having no text. Legacy `.doc`, PowerPoint, Excel and image files aren't accepted.
 - Very long items are indexed up to **3,000 passages**, and the item says so.
