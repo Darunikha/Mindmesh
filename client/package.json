@@ -21,18 +21,18 @@
     "vitest": "^5.1.0"
   },
   "dependencies": {
-    "@tiptap/extensions": "^3.33.1",
+    "@tiptap/extensions": "^3.35.0",
     "@tiptap/pm": "^3.33.1",
-    "@tiptap/react": "^3.33.1",
-    "@tiptap/starter-kit": "^3.33.1",
+    "@tiptap/react": "^3.35.0",
+    "@tiptap/starter-kit": "^3.35.0",
     "@xyflow/react": "^12.12.1",
     "d3-force": "^3.0.1",
-    "framer-motion": "^14.12.0",
-    "lucide-react": "^1.72.0",
+    "framer-motion": "^14.14.0",
+    "lucide-react": "^1.77.0",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "react-markdown": "^10.1.0",
-    "react-router-dom": "^7.18.5",
+    "react-router-dom": "^7.18.6",
     "rehype-highlight": "^7.0.2",
     "remark-gfm": "^4.0.1"
   }
