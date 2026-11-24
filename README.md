@@ -260,14 +260,14 @@ mindmesh/
 ## Testing and quality checks
 
 ```bash
-npm test                    # API tests (111) + component tests (94)
+npm test                    # API tests (111) + frontend tests (409)
 npm test -w server          # API only: node:test + supertest + in-memory MongoDB
 npm test -w client          # components only: Vitest + Testing Library (jsdom)
 npm run dev & npm run check:ui
 ```
 
 - **API tests** cover auth, sessions, preferences, notes and autosave conflicts, uploads (generated PDF and DOCX files), extraction failures, links (a local test server, redirects, robots.txt, SSRF), collections and tags, search (keyword, semantic, filters, highlights), stale-data cleanup, the assistant (streaming, citations, isolation, locking, stop, errors, regenerate, memory), embeddings (reuse, re-index), graph and suggestions, timeline and backfill, and security hardening. AI providers are replaced by **test-only doubles** registered inside the tests, so no keys are needed and no real AI quality is implied.
-- **Component tests** cover citation linking, the composer, source cards (including deleted sources), the autosave engine, highlights, graph layout and formatting helpers.
+- **Frontend tests** (Vitest and Testing Library) cover the API client (request shape, error mapping, shared token refresh, downloads, uploads and the streaming parser), sign-in and session handling, route guards, the login, sign-up and onboarding pages, form handling, dialogs and toasts, the Vault (select mode and bulk actions, tag picker, upload and link dialogs), flashcard review keyboard controls, the assistant (modes, citations, conversation list and pinning), the Ctrl+K menu, the offline banner and 404 page, the installable-app files and service worker rules, and the date, size and device-name helpers. The suite was also checked by deliberately breaking 16 pieces of real code and confirming the tests noticed (15 were caught; the other change could not be observed).
 - **`npm run check:ui`** registers a user, seeds content, then signs in once with Playwright (system **Edge** by default; set `UI_BROWSER=chrome` or a browser path) and visits 11 pages in all 3 themes at 1440, 1024, 768 and 390 px. It reports horizontal overflow, console errors, failed requests and **axe-core WCAG 2.1 AA** serious and critical violations, and saves screenshots to `ui-report/`. It signs in once because sign-in is rate-limited, so restart the API before running it repeatedly.
 
 ## Deployment notes

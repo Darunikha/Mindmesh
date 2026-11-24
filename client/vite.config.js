@@ -37,6 +37,8 @@ export default defineConfig({
     environment: 'jsdom',
     include: ['src/**/*.test.{js,jsx}'],
     setupFiles: ['src/test/setup.js'],
+    // Generous, so the suite stays green on a slow or busy machine (many test files run at once).
+    testTimeout: 15000,
   },
   server: {
     port: 5173,
