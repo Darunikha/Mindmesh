@@ -425,3 +425,89 @@ describe('pinned conversations', () => {
     assert.equal((await u.patch(`/api/conversations/${ids[1]}`, { pinned: 'yes' })).status, 400);
   });
 });
+
+describe('Both mode (library when relevant, general knowledge otherwise)', () => {
+  const lastTurn = () => calls.chat.at(-1).messages.at(-1).content;
+
+  it('answers normally with an empty library: no notice, no search, the plain question goes to the model', async () => {
+    const u = await makeUser(ctx.app);
+    const c = await newConversation(u);
+    const ev = eventsOf(await send(u, c.id, 'Explain photosynthesis simply', 'hybrid'));
+    assert.equal(ev.some((e) => e.event === 'sources'), false, 'nothing to search, so no sources event');
+    assert.equal(ev.some((e) => e.event === 'status' && e.data.phase === 'searching'), false);
+    const done = ev.find((e) => e.event === 'done').data.message;
+    assert.equal(done.kind, 'message', 'not the empty-library notice that My Knowledge shows');
+    assert.equal(done.mode, 'hybrid');
+    assert.match(done.content, /^Echo: Explain photosynthesis simply/);
+    assert.equal(done.citations.length, 0);
+    assert.equal(done.retrieval, null);
+    assert.equal(lastTurn(), 'Explain photosynthesis simply');
+    assert.match(calls.chat.at(-1).system, /Both mode/);
+    assert.doesNotMatch(calls.chat.at(-1).system, /My Knowledge mode/);
+  });
+
+  it('uses relevant passages with real citations, never another user’s content', async () => {
+    const alice = await makeUser(ctx.app, 'Alice');
+    const bob = await makeUser(ctx.app, 'Bob');
+    await alice.post('/api/resources/notes', { title: 'Backpropagation', content: doc(heading('Gradients'), 'Backpropagation computes gradients that flow backwards through the network layers.') });
+    await bob.post('/api/resources/notes', { title: 'Bob secret backpropagation', content: doc('Bob private gradients backwards network layers secret.') });
+    await waitForIdle();
+
+    const c = await newConversation(alice);
+    const ev = eventsOf(await send(alice, c.id, 'How do gradients flow backwards through network layers?', 'hybrid'));
+    const sources = ev.find((e) => e.event === 'sources').data;
+    assert.equal(sources.passages[0].title, 'Backpropagation');
+    assert.ok(sources.passages.every((p) => !p.title.startsWith('Bob')));
+
+    const done = ev.find((e) => e.event === 'done').data.message;
+    const cited = done.citations.filter((x) => x.cited);
+    assert.equal(cited.length, 1, 'only [1] is real; the invented [9] is ignored');
+    assert.equal(cited[0].title, 'Backpropagation');
+    assert.match(lastTurn(), /<source n="1" title="Backpropagation"/);
+    assert.doesNotMatch(lastTurn(), /Bob private/);
+    assert.match(calls.chat.at(-1).system, /Never invent a source/);
+  });
+
+  it('does not tell the model the sources failed when nothing matched; it just answers', async () => {
+    const u = await makeUser(ctx.app);
+    await u.post('/api/resources/notes', { title: 'Knitting', content: doc('Purl and knit stitches.') });
+    await waitForIdle();
+    const c = await newConversation(u);
+    const ev = eventsOf(await send(u, c.id, 'quantum chromodynamics lattice', 'hybrid'));
+    const sources = ev.find((e) => e.event === 'sources').data;
+    assert.equal(sources.passages.length, 0);
+    assert.equal(sources.retrieval.searched, true);
+    assert.equal(lastTurn(), 'quantum chromodynamics lattice', 'My Knowledge would add a "your sources don’t cover this" instruction here');
+    const done = ev.find((e) => e.event === 'done').data.message;
+    assert.match(done.content, /^Echo: quantum chromodynamics lattice/);
+    assert.doesNotMatch(done.content, /don't cover/);
+    assert.equal(done.citations.length, 0);
+  });
+
+  it('can be chosen per conversation, kept on the conversation, switched mid-chat, and exported with its name', async () => {
+    const u = await makeUser(ctx.app);
+    const created = await u.post('/api/conversations', { mode: 'hybrid' });
+    assert.equal(created.status, 201);
+    assert.equal(created.body.conversation.mode, 'hybrid');
+
+    await send(u, created.body.conversation.id, 'first question', 'hybrid');
+    assert.equal((await u.get(`/api/conversations/${created.body.conversation.id}`)).body.conversation.mode, 'hybrid');
+    await send(u, created.body.conversation.id, 'second question', 'general');
+    assert.equal((await u.get(`/api/conversations/${created.body.conversation.id}`)).body.conversation.mode, 'general');
+
+    const exported = await u.get(`/api/conversations/${created.body.conversation.id}/export`);
+    assert.equal(exported.status, 200);
+    assert.match(exported.text, /· Both\n/);
+    assert.match(exported.text, /· General AI\n/);
+
+    assert.equal((await u.patch(`/api/conversations/${created.body.conversation.id}`, { mode: 'hybrid' })).body.conversation.mode, 'hybrid');
+    assert.equal((await u.post('/api/conversations', { mode: 'everything' })).status, 400, 'unknown modes are still rejected');
+  });
+
+  it('can be saved as the default answer mode', async () => {
+    const u = await makeUser(ctx.app);
+    const res = await u.patch('/api/users/me/preferences', { ai: { defaultMode: 'hybrid' } });
+    assert.equal(res.status, 200);
+    assert.equal((await u.get('/api/users/me')).body.user.preferences.ai.defaultMode, 'hybrid');
+  });
+});

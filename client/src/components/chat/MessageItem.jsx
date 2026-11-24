@@ -1,6 +1,6 @@
 import { memo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { BookmarkCheck, BookmarkPlus, AlertTriangle, BookOpenCheck, Brain, Check, Copy, Info, LibraryBig, Loader2, RotateCcw, Search, Square } from 'lucide-react';
+import { BookmarkCheck, BookmarkPlus, AlertTriangle, BookOpenCheck, Blend, Brain, Check, Copy, Info, LibraryBig, Loader2, RotateCcw, Search, Square } from 'lucide-react';
 import Markdown from './Markdown.jsx';
 import SourceCards from './SourceCards.jsx';
 import { useTheme } from '../../context/ThemeContext.jsx';
@@ -12,7 +12,16 @@ function GroundingBadge({ message }) {
   let icon = Brain;
   let label = 'General AI';
   let cls = 'text-ink-muted';
-  if (message.mode === 'knowledge') {
+  if (message.mode === 'hybrid') {
+    if (citedCount) {
+      icon = BookOpenCheck;
+      label = `Both · grounded in ${citedCount} of your source${citedCount === 1 ? '' : 's'}`;
+      cls = 'text-success';
+    } else {
+      icon = Blend;
+      label = message.retrieval?.found ? 'Both · sources searched, none cited' : message.retrieval?.searched ? 'Both · no matching sources, general knowledge' : 'Both';
+    }
+  } else if (message.mode === 'knowledge') {
     if (message.kind === 'notice') {
       icon = Info;
       label = 'My Knowledge · no sources yet';

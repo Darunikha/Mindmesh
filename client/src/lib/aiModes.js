@@ -1,4 +1,4 @@
-import { Brain, LibraryBig } from 'lucide-react';
+import { Blend, Brain, LibraryBig } from 'lucide-react';
 
 export const ANSWER_MODE_OPTIONS = [
   {
@@ -13,7 +13,15 @@ export const ANSWER_MODE_OPTIONS = [
     description: 'Searches your saved notes, documents and links, cites them, and labels any general knowledge it adds.',
     icon: LibraryBig,
   },
+  {
+    value: 'hybrid',
+    label: 'Both',
+    description: 'Uses your saved notes, documents and links when they are relevant, and general knowledge when they are not.',
+    icon: Blend,
+  },
 ];
 
-/** Older accounts may have the retired "hybrid" default; My Knowledge already blends sources with labelled general knowledge. */
-export const normalizeMode = (m) => (m === "general" ? "general" : "knowledge");
+export const ANSWER_MODES = ANSWER_MODE_OPTIONS.map((o) => o.value);
+
+/** Anything unrecognised (an old or missing preference) falls back to My Knowledge. */
+export const normalizeMode = (m) => (ANSWER_MODES.includes(m) ? m : 'knowledge');

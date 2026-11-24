@@ -1,7 +1,11 @@
 import mongoose from 'mongoose';
 
 const { ObjectId } = mongoose.Schema.Types;
-export const CHAT_MODES = ['general', 'knowledge'];
+/**
+ * general: the model's own knowledge. knowledge ("My Knowledge"): grounded in the user's library.
+ * hybrid ("Both"): the library when it is relevant, general knowledge when it is not.
+ */
+export const CHAT_MODES = ['general', 'knowledge', 'hybrid'];
 
 const conversationSchema = new mongoose.Schema(
   {

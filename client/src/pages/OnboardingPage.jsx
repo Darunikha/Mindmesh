@@ -13,7 +13,7 @@ import InterestConstellation from '../components/theme/InterestConstellation.jsx
 import { useAuth } from '../context/AuthContext.jsx';
 import { useTheme } from '../context/ThemeContext.jsx';
 import { usersApi } from '../api/endpoints.js';
-import { ANSWER_MODE_OPTIONS } from '../lib/aiModes.js';
+import { ANSWER_MODES, ANSWER_MODE_OPTIONS } from '../lib/aiModes.js';
 import { THEMES } from '../themes/registry.js';
 import { cn } from '../lib/cn.js';
 
@@ -32,7 +32,7 @@ export default function OnboardingPage() {
   const [step, setStep] = useState(0);
   const [name, setName] = useState(user?.name || '');
   const [interests, setInterests] = useState(user?.interests || []);
-  const [defaultMode, setDefaultMode] = useState(user?.preferences?.ai?.defaultMode === 'knowledge' ? 'knowledge' : 'general');
+  const [defaultMode, setDefaultMode] = useState(ANSWER_MODES.includes(user?.preferences?.ai?.defaultMode) ? user.preferences.ai.defaultMode : 'general');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
   const [nameError, setNameError] = useState(null);
@@ -184,7 +184,7 @@ export default function OnboardingPage() {
                     This is the default for new conversations. You can switch modes per chat, and change this default in Settings.
                   </p>
                   <div className="mt-8">
-                    <ChoiceCards columns={2} label="Default answer mode" value={defaultMode} onChange={setDefaultMode} options={ANSWER_MODE_OPTIONS} />
+                    <ChoiceCards columns={3} label="Default answer mode" value={defaultMode} onChange={setDefaultMode} options={ANSWER_MODE_OPTIONS} />
                   </div>
                 </div>
               )}

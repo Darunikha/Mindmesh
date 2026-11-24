@@ -2,7 +2,7 @@ import Conversation from '../../models/Conversation.js';
 import Message from '../../models/Message.js';
 import Resource from '../../models/Resource.js';
 import { retrieve } from '../../ai/retrieval.js';
-import { FOLLOWUP_SCHEMA, SUMMARY_SCHEMA, citedNumbers, followUpPrompt, knowledgeTurn, summaryPrompt, systemPrompt } from '../../ai/prompts.js';
+import { FOLLOWUP_SCHEMA, SUMMARY_SCHEMA, citedNumbers, followUpPrompt, hybridTurn, knowledgeTurn, summaryPrompt, systemPrompt } from '../../ai/prompts.js';
 import { serializeConversation, serializeMessage } from './chat.service.js';
 
 /** Characters of prior conversation sent verbatim (~12k tokens). Older turns are summarised. */
@@ -105,15 +105,20 @@ export async function runGeneration({ req, res, provider, conversation, userMess
     const prefs = user.preferences?.ai || {};
     const update = {};
 
-    if (mode === 'knowledge') {
-      const libraryCount = await Resource.countDocuments({ user: user._id });
-      if (libraryCount === 0) {
-        Object.assign(update, { kind: 'notice', content: EMPTY_LIBRARY_NOTICE, status: 'complete', retrieval: { searched: false, found: 0, note: 'EMPTY_LIBRARY' } });
-        await Message.updateOne({ _id: assistant._id }, { $set: update });
-        await finishConversation(conversation, mode, isNewTurn);
-        send('done', { message: serializeMessage({ ...assistant.toObject(), ...update }) });
-        return;
-      }
+    // Both modes look in the library, but only My Knowledge insists on it: Both simply answers
+    // from general knowledge when there is nothing saved to search yet.
+    const usesLibrary = mode === 'knowledge' || mode === 'hybrid';
+    const libraryCount = usesLibrary ? await Resource.countDocuments({ user: user._id }) : 0;
+
+    if (mode === 'knowledge' && libraryCount === 0) {
+      Object.assign(update, { kind: 'notice', content: EMPTY_LIBRARY_NOTICE, status: 'complete', retrieval: { searched: false, found: 0, note: 'EMPTY_LIBRARY' } });
+      await Message.updateOne({ _id: assistant._id }, { $set: update });
+      await finishConversation(conversation, mode, isNewTurn);
+      send('done', { message: serializeMessage({ ...assistant.toObject(), ...update }) });
+      return;
+    }
+
+    if (usesLibrary && libraryCount > 0) {
       send('status', { phase: 'searching' });
       const query = await retrievalQuery(conversation._id, userMessage);
       const r = await retrieve(user._id, query);
@@ -128,11 +133,14 @@ export async function runGeneration({ req, res, provider, conversation, userMess
         retrieval: update.retrieval,
         passages: passages.map((p) => ({ n: p.n, resourceId: p.resourceId, resourceType: p.resourceType, title: p.title, page: p.page, excerpt: p.text.slice(0, 400) })),
       });
+    } else if (mode === 'hybrid') {
+      update.retrieval = { searched: false, found: 0 };
     }
 
     send('status', { phase: 'thinking' });
     const history = await buildHistory(provider, conversation, userMessage);
-    const messages = [...history, { role: 'user', content: mode === 'knowledge' ? knowledgeTurn(userMessage.content, passages) : userMessage.content }];
+    const turn = { knowledge: knowledgeTurn, hybrid: hybridTurn }[mode];
+    const messages = [...history, { role: 'user', content: turn ? turn(userMessage.content, passages) : userMessage.content }];
 
     let lastSave = Date.now();
     const result = await provider.streamChat({

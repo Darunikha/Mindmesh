@@ -125,7 +125,7 @@ export default function AiSection() {
       <Card className="p-5 sm:p-6">
         <CardHeader eyebrow="Answer mode" title="Default for new conversations" />
         <p className="mt-1 mb-5 font-ui text-sm text-ink-muted">You can switch modes at any time inside a chat without losing the conversation.</p>
-        <ChoiceCards columns={2} label="Default answer mode" value={normalizeMode(ai.defaultMode)} onChange={(v) => save({ ai: { defaultMode: v } })} options={ANSWER_MODE_OPTIONS} />
+        <ChoiceCards columns={3} label="Default answer mode" value={normalizeMode(ai.defaultMode)} onChange={(v) => save({ ai: { defaultMode: v } })} options={ANSWER_MODE_OPTIONS} />
       </Card>
 
       <Card className="p-5 sm:p-6">

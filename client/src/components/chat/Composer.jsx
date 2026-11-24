@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
-import { ArrowUp, Brain, LibraryBig, Square } from 'lucide-react';
+import { ArrowUp, Blend, Brain, LibraryBig, Square } from 'lucide-react';
 import { cn } from '../../lib/cn.js';
 
 export const CHAT_MODES = [
   { value: 'general', label: 'General AI', short: 'General', icon: Brain, hint: "Answers from the model's general knowledge." },
   { value: 'knowledge', label: 'My Knowledge', short: 'Mine', icon: LibraryBig, hint: 'Searches your saved notes, documents and links, and cites them.' },
+  { value: 'hybrid', label: 'Both', short: 'Both', icon: Blend, hint: 'Uses your saved sources when they are relevant, and general knowledge when they are not.' },
 ];
 
 export function ModeSwitch({ mode, onChange, disabled }) {

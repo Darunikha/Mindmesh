@@ -111,7 +111,7 @@ export async function updateConversation(userId, id, { title, mode, pinned }) {
   return serializeConversation(c);
 }
 
-const MODE_LABEL = { general: 'General AI', knowledge: 'My Knowledge' };
+const MODE_LABEL = { general: 'General AI', knowledge: 'My Knowledge', hybrid: 'Both' };
 const stamp = (d) => new Date(d).toISOString().slice(0, 16).replace('T', ' ');
 
 /**

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { Brain, Download, LibraryBig, MessagesSquare, Sparkles } from 'lucide-react';
+import { Blend, Brain, Download, LibraryBig, MessagesSquare, Sparkles } from 'lucide-react';
+import { normalizeMode } from '../../lib/aiModes.js';
 import Composer, { CHAT_MODES } from '../../components/chat/Composer.jsx';
 import ConversationList from '../../components/chat/ConversationList.jsx';
 import MessageItem from '../../components/chat/MessageItem.jsx';
@@ -24,6 +25,14 @@ const uuid = () => (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${M
 
 function suggestions(mode, interests) {
   const topics = interests.slice(0, 2);
+  if (mode === 'hybrid') {
+    return [
+      topics[0] ? `Explain ${topics[0].toLowerCase()}, using my notes where they help` : 'Explain a topic I have notes on, using my notes where they help',
+      'Summarise the key ideas across my saved notes',
+      'What am I missing on this topic that my sources do not cover?',
+      topics[1] ? `Compare what I know about ${topics[1].toLowerCase()} with the standard view` : 'Compare my notes with the standard view of the topic',
+    ];
+  }
   if (mode === 'knowledge') {
     return [
       'Summarise the key ideas across my saved notes',
@@ -46,7 +55,7 @@ export default function AssistantPage() {
   const { user } = useAuth();
   const { theme } = useTheme();
   const toast = useToast();
-  const prefMode = user.preferences?.ai?.defaultMode === 'general' ? 'general' : 'knowledge';
+  const prefMode = normalizeMode(user.preferences?.ai?.defaultMode);
 
   const [status, setStatus] = useState(null);
   const [conversations, setConversations] = useState(null);
@@ -157,7 +166,7 @@ export default function AssistantPage() {
         ...(regenerate ? [] : [{ id: tmpUser, role: 'user', content: userText, mode: streamMode, createdAt: now }]),
         { id: tmpAsst, role: 'assistant', kind: 'message', mode: streamMode, content: '', status: 'streaming', citations: [], followUps: [], createdAt: now },
       ]);
-      setStream({ assistantId: tmpAsst, phase: streamMode === 'knowledge' ? 'searching' : 'thinking' });
+      setStream({ assistantId: tmpAsst, phase: streamMode === 'knowledge' || streamMode === 'hybrid' ? 'searching' : 'thinking' });
 
       const patch = (fn) => {
         const target = asstIdRef.current;
@@ -404,7 +413,11 @@ export default function AssistantPage() {
               </h2>
               <p className="mt-2 max-w-md font-ui text-sm text-ink-muted">
                 Ask {THEMES[theme].assistantName} anything.{' '}
-                {mode === 'knowledge' ? (
+                {mode === 'hybrid' ? (
+                  <>
+                    <Blend size={13} className="inline align-[-2px]" aria-hidden /> <strong>Both</strong> uses your Vault when it is relevant and the model’s own knowledge when it is not.
+                  </>
+                ) : mode === 'knowledge' ? (
                   <>
                     <LibraryBig size={13} className="inline align-[-2px]" aria-hidden /> <strong>My Knowledge</strong> searches your Vault and cites what it finds.
                   </>
@@ -463,7 +476,7 @@ export default function AssistantPage() {
               disabled={!status}
               mode={mode}
               onModeChange={changeMode}
-              placeholder={mode === 'knowledge' ? 'Ask about your notes, documents and links…' : 'Ask anything…'}
+              placeholder={mode === 'knowledge' ? 'Ask about your notes, documents and links…' : mode === 'hybrid' ? 'Ask anything. Your notes are used when they help…' : 'Ask anything…'}
             />
           )}
           <p className="mt-2 text-center font-ui text-[0.7rem] text-ink-faint">
