@@ -97,6 +97,7 @@ Generate each secret with `node -e "console.log(require('crypto').randomBytes(48
 | --- | --- |
 | `npm run dev` | Runs the API (auto-restart) and the Vite dev server together |
 | `npm test` | Runs the API tests, then the frontend component tests |
+| `npm run lint` | Checks the whole repo for mistakes such as undefined names, unused code and misused React hooks (ESLint) |
 | `npm start` | Production mode: builds the frontend, then serves it and the API from one server |
 | `npm run build` | Builds the frontend to `client/dist` |
 | `npm run check:ui` | Visual, responsive and accessibility check (needs `npm run dev` running; see [Testing](#testing-and-quality-checks)) |

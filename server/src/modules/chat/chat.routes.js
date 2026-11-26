@@ -93,7 +93,7 @@ router.post('/:id/messages', generationLimiter, validate({ params: objectIdParam
     if (conversation.messageCount === 0) {
       logActivity(req.user._id, 'conversation_started', { conversation: conversation._id, title: content.slice(0, 140), meta: { mode } });
     }
-    await runGeneration({ req, res, provider, conversation, userMessage, mode, user: req.user, isNewTurn: true });
+    await runGeneration({ res, provider, conversation, userMessage, mode, user: req.user, isNewTurn: true });
   } finally {
     await service.releaseLock(conversation._id);
   }
@@ -125,7 +125,7 @@ router.post('/:id/messages/:messageId/regenerate', generationLimiter, validate({
     if (!userMessage) throw ApiError.badRequest('There is no question to answer again.');
     await last.deleteOne();
     const mode = req.body.mode || last.mode;
-    await runGeneration({ req, res, provider, conversation, userMessage, mode, user: req.user, isNewTurn: false });
+    await runGeneration({ res, provider, conversation, userMessage, mode, user: req.user, isNewTurn: false });
   } finally {
     await service.releaseLock(conversation._id);
   }

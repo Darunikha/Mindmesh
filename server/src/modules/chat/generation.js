@@ -88,7 +88,7 @@ async function retrievalQuery(conversationId, userMessage) {
  *   start → status(searching) → sources → status(thinking) → delta* → done → meta(followUps/title) → end
  * Errors after streaming starts are sent as an `error` event and recorded on the message.
  */
-export async function runGeneration({ req, res, provider, conversation, userMessage, mode, user, isNewTurn }) {
+export async function runGeneration({ res, provider, conversation, userMessage, mode, user, isNewTurn }) {
   const send = sse(res);
   const assistant = await Message.create({ conversation: conversation._id, user: user._id, role: 'assistant', mode, status: 'streaming' });
   send('start', { userMessage: serializeMessage(userMessage), assistantMessage: serializeMessage(assistant) });

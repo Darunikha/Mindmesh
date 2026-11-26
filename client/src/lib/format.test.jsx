@@ -191,10 +191,11 @@ describe('resourceDetail, resourcePath and isBusy', () => {
 
 describe('cn', () => {
   it('joins class names, skipping anything falsy', () => {
-    expect(cn('a', false, null, undefined, '', 'b', 0 && 'c')).toBe('a b');
+    expect(cn('a', false, null, undefined, '', 'b', 0)).toBe('a b');
   });
   it('flattens arrays and handles conditionals', () => {
-    expect(cn(['a', false, 'b'], true && 'c', false && 'd')).toBe('a b c');
+    const [on, off] = [true, false].map(Boolean);
+    expect(cn(['a', false, 'b'], on && 'c', off && 'd')).toBe('a b c');
     expect(cn()).toBe('');
   });
 });

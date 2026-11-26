@@ -42,7 +42,7 @@ function Where() {
   return <p data-testid="where">{l.pathname}</p>;
 }
 
-function Harness({ view = 'grid', theme = 'studio', onDone = () => {} }) {
+function Harness({ view = 'grid', onDone = () => {} }) {
   const select = useSelection();
   return (
     <>

@@ -6,7 +6,6 @@ export function notFoundHandler(req, _res, next) {
   next(ApiError.notFound(`No route for ${req.method} ${req.originalUrl}`));
 }
 
-// eslint-disable-next-line no-unused-vars
 export function errorHandler(err, req, res, _next) {
   let error = err;
 

@@ -16,7 +16,7 @@ export function normaliseText(text = '') {
     .replace(/\r\n?/g, '\n')
     // eslint-disable-next-line no-control-regex
     .replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, '')
-    .replace(/[ \t ]+/g, ' ')
+    .replace(/[ \t\u00A0]+/g, ' ')
     .replace(/ *\n */g, '\n')
     // Re-join words hyphenated across line breaks (common in PDFs).
     .replace(/(\w)-\n(\w)/g, '$1$2')

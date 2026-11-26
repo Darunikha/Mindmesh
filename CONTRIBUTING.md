@@ -18,6 +18,7 @@ For a first run, set `USE_IN_MEMORY_DB=true` in `server/.env` so no database is 
 
 ```bash
 npm test                 # API tests, then component tests
+npm run lint             # no lint errors
 npm run build            # the frontend must build
 npm run check:ui         # optional but welcome for UI changes (needs `npm run dev` running)
 ```

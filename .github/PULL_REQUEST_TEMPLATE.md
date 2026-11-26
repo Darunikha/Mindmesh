@@ -2,6 +2,7 @@
 
 ## How was it checked?
 - [ ] `npm test` passes
+- [ ] `npm run lint` passes
 - [ ] `npm run build` passes
 - [ ] For UI changes: checked in all three themes and on a narrow screen (or ran `npm run check:ui`)
 

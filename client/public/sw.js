@@ -15,6 +15,7 @@
  * The BUILD placeholder below is replaced at build time (see vite.config.js), so every new build changes this file,
  * which is what makes browsers install the update and pre-cache the new shell.
  */
+// eslint-disable-next-line no-unused-vars -- never read: it only makes the file differ between builds
 const BUILD = '__BUILD_ID__';
 const ASSETS = 'mm-assets'; // keeps older builds' files too, so a tab that is still open can load its lazy chunks
 const SHELL = 'mm-shell';

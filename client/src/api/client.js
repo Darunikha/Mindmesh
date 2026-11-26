@@ -176,7 +176,7 @@ export function uploadWithProgress(path, formData, { onProgress, signal } = {}) 
       if (accessToken) xhr.setRequestHeader('Authorization', `Bearer ${accessToken}`);
       xhr.upload.onprogress = (e) => e.lengthComputable && onProgress?.(e.loaded / e.total);
       xhr.onload = () => {
-        let data = null;
+        let data;
         try {
           data = xhr.responseText ? JSON.parse(xhr.responseText) : null;
         } catch {
