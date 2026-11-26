@@ -28,6 +28,26 @@ export const sensitiveLimiter = rateLimit({
   skip,
 });
 
+/** Asking for a reset email: strict, because each request can send mail to someone's inbox. */
+export const forgotPasswordLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 5,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  handler,
+  skip,
+});
+
+/** Using a reset link. */
+export const resetPasswordLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 10,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  handler,
+  skip,
+});
+
 /** General API ceiling per IP (configurable; sensitive routes have their own stricter limits). */
 export const apiLimiter = rateLimit({
   windowMs: 60 * 1000,

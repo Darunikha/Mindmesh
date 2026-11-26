@@ -34,14 +34,15 @@ Each theme has its own typography, surfaces, navigation and component shapes, no
 4. [Quick start](#quick-start)
 5. [Configuration](#configuration)
 6. [Database setup](#database-setup)
-7. [AI provider setup](#ai-provider-setup)
-8. [Vector search configuration](#vector-search-configuration)
-9. [File storage](#file-storage)
-10. [Architecture](#architecture)
-11. [Security](#security)
-12. [Testing and quality checks](#testing-and-quality-checks)
-13. [Deployment notes](#deployment-notes)
-14. [Known limitations](#known-limitations)
+7. [Email setup](#email-setup)
+8. [AI provider setup](#ai-provider-setup)
+9. [Vector search configuration](#vector-search-configuration)
+10. [File storage](#file-storage)
+11. [Architecture](#architecture)
+12. [Security](#security)
+13. [Testing and quality checks](#testing-and-quality-checks)
+14. [Deployment notes](#deployment-notes)
+15. [Known limitations](#known-limitations)
 
 ---
 
@@ -50,6 +51,7 @@ Each theme has its own typography, surfaces, navigation and component shapes, no
 | Area | What you can do |
 | --- | --- |
 | **Accounts and themes** | Sign up, onboard (name, theme, interests, default AI mode), and choose between three complete visual identities: **The Library** (warm editorial), **The Studio** (bright modular) and **The Lab** (dark research instrument). Your theme is saved to your account. |
+| **Forgot password** | An emailed link, valid once and for 30 minutes, to choose a new password; every device is signed out and a confirmation email follows (needs [email setup](#email-setup)). |
 | **Knowledge Vault** | Rich-text notes with autosave and conflict detection; uploads of PDF, DOCX, TXT, MD, CSV, JSON, HTML and RTF, with background text extraction; saved web links (title, description, favicon, readable text); pinning; grid and list views; recent items; **bulk actions**: press Select, tick several items, then pin, unpin, move, tag or delete them together (deleting asks first). |
 | **Organisation** | Nested collections (3 levels) and tags. Deleting a collection or tag never deletes your items. |
 | **AI assistant** | Streaming chat in three modes, switchable mid-conversation and chosen as your default during onboarding or in Settings: **General AI** (the model's own knowledge), **My Knowledge** (answers from your saved sources with inline citations, and says so when they don't cover a question) and **Both** (uses your sources, with citations, when they are relevant, and general knowledge when they are not, kept in clearly labelled paragraphs; it simply answers normally if your library is empty). Conversation history with search, rename, delete and **pinning** (up to 20 pinned chats stay at the top), copy, regenerate, stop, follow-up suggestions, Markdown and highlighted code. |
@@ -124,6 +126,9 @@ All configuration lives in `server/.env`. It is validated at boot, and the serve
 | `JWT_ACCESS_SECRET` / `JWT_REFRESH_SECRET` | — (required) | 32 or more characters each |
 | `ACCESS_TOKEN_TTL` / `REFRESH_TOKEN_TTL_DAYS` | `15m` / `14` | Token lifetimes |
 | `BCRYPT_ROUNDS` | `12` | Password hashing cost |
+| `SMTP_HOST` / `SMTP_PORT` / `SMTP_SECURE` | — / `587` / from the port | Mail server for password reset (see [Email setup](#email-setup)) |
+| `SMTP_USER` / `SMTP_PASS` / `MAIL_FROM` | — | Mail sign-in, and the sender address (defaults to `SMTP_USER`) |
+| `APP_URL` / `PASSWORD_RESET_TTL_MINUTES` | first `CLIENT_ORIGIN` / `30` | Address used in emailed links, and how long a reset link lasts |
 | `UPLOAD_DIR` / `MAX_UPLOAD_MB` | `./uploads` / `25` | File storage folder and per-file limit |
 | `PROCESSING_CONCURRENCY` | `2` | Parallel extraction jobs |
 | `LINK_FETCH_TIMEOUT_MS` / `LINK_MAX_BYTES` | `10000` / `3000000` | Limits for fetching saved links |
@@ -146,6 +151,29 @@ Client (optional, `client/.env`): `VITE_API_URL` overrides the API base URL (def
 - **MongoDB Atlas (recommended):** create a cluster (the free M0 tier works), allow your IP, create a database user, and set `MONGODB_URI=mongodb+srv://USER:PASS@CLUSTER.mongodb.net/mindmesh`. Indexes are created automatically at startup.
 - **Local MongoDB 6+:** `MONGODB_URI=mongodb://localhost:27017/mindmesh`. Everything works, and vector search runs in-process.
 - **In-memory (`USE_IN_MEMORY_DB=true`):** for a quick try-out only. The MongoDB binary downloads on first run, and all data disappears when the server stops.
+
+## Email setup
+
+Email is only used for **Forgot password?**. Any service that offers SMTP works.
+
+| Where you are | What happens without `SMTP_HOST` |
+| --- | --- |
+| Development | The email, including the reset link, is printed in the server window, so you can try it with no account |
+| Production | Password reset is switched off, and the page says so |
+
+To send real email, add these to `server/.env` (or the root `.env` for Docker Compose) and restart:
+
+```
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=you@gmail.com
+SMTP_PASS=your-16-character-app-password
+MAIL_FROM=Mindmesh <you@gmail.com>
+APP_URL=https://notes.example.com     # only if it differs from CLIENT_ORIGIN
+```
+
+- **Gmail:** turn on 2-Step Verification, then create an [app password](https://myaccount.google.com/apppasswords) and use it as `SMTP_PASS`. Your normal password will not work. Suitable for personal use.
+- **A mail service** (Brevo, Resend, Mailgun, Postmark, Amazon SES and others): copy the SMTP host, user and password from its dashboard, and use a sender address it has verified. Better for anything public.
 
 ## AI provider setup
 
@@ -252,6 +280,7 @@ mindmesh/
 | Area | Measures |
 | --- | --- |
 | Passwords | bcrypt (cost 12); maximum 72 bytes so nothing is silently truncated; login timing equalised for unknown emails |
+| Password reset | Random single-use link, stored hashed, expiring, replaced by newer requests and cancelled by a password change; the token travels after `#` so it stays out of server logs; links are built from configuration, not request headers; replies do not reveal whether an account exists; one email per account per minute plus per-IP limits; all sessions revoked after a reset |
 | Tokens | 15-minute JWT access tokens (HS256 pinned; issuer and audience checked), held in memory only; rotating httpOnly `SameSite=Strict` refresh cookies, stored hashed; replaying a rotated token revokes every session; every request checks that its session is still active |
 | Authorisation | Every query is scoped to the authenticated user, including vector search pre-filters and re-checks of retrieved items; tests attempt cross-user reads, writes, searches, retrieval, files, connections and conversations |
 | Input | Zod validation on all bodies, params and queries (unknown keys rejected where it matters); note JSON sanitised (depth and size limits, unsafe links stripped); Markdown rendered without raw HTML |
@@ -264,15 +293,15 @@ mindmesh/
 ## Testing and quality checks
 
 ```bash
-npm test                    # API tests (111) + frontend tests (409)
+npm test                    # API tests (128) + frontend tests (419)
 npm test -w server          # API only: node:test + supertest + in-memory MongoDB
 npm test -w client          # components only: Vitest + Testing Library (jsdom)
 npm run dev & npm run check:ui
 ```
 
-- **API tests** cover auth, sessions, preferences, notes and autosave conflicts, uploads (generated PDF and DOCX files), extraction failures, links (a local test server, redirects, robots.txt, SSRF), collections and tags, search (keyword, semantic, filters, highlights), stale-data cleanup, the assistant (streaming, citations, isolation, locking, stop, errors, regenerate, memory), embeddings (reuse, re-index), graph and suggestions, timeline and backfill, and security hardening. AI providers are replaced by **test-only doubles** registered inside the tests, so no keys are needed and no real AI quality is implied.
-- **Frontend tests** (Vitest and Testing Library) cover the API client (request shape, error mapping, shared token refresh, downloads, uploads and the streaming parser), sign-in and session handling, route guards, the login, sign-up and onboarding pages, form handling, dialogs and toasts, the Vault (select mode and bulk actions, tag picker, upload and link dialogs), flashcard review keyboard controls, the assistant (modes, citations, conversation list and pinning), the Ctrl+K menu, the offline banner and 404 page, the installable-app files and service worker rules, and the date, size and device-name helpers. The suite was also checked by deliberately breaking 16 pieces of real code and confirming the tests noticed (15 were caught; the other change could not be observed).
-- **`npm run check:ui`** registers a user, seeds content, then signs in once with Playwright (system **Edge** by default; set `UI_BROWSER=chrome` or a browser path) and visits 11 pages in all 3 themes at 1440, 1024, 768 and 390 px. It reports horizontal overflow, console errors, failed requests and **axe-core WCAG 2.1 AA** serious and critical violations, and saves screenshots to `ui-report/`. It signs in once because sign-in is rate-limited, so restart the API before running it repeatedly.
+- **API tests** cover auth, sessions, password reset (including single use, expiry, simultaneous requests and delivery to a local test mail server), preferences, notes and autosave conflicts, uploads (generated PDF and DOCX files), extraction failures, links (a local test server, redirects, robots.txt, SSRF), collections and tags, search (keyword, semantic, filters, highlights), stale-data cleanup, the assistant (streaming, citations, isolation, locking, stop, errors, regenerate, memory), embeddings (reuse, re-index), graph and suggestions, timeline and backfill, and security hardening. AI providers are replaced by **test-only doubles** registered inside the tests, so no keys are needed and no real AI quality is implied.
+- **Frontend tests** (Vitest and Testing Library) cover the API client (request shape, error mapping, shared token refresh, downloads, uploads and the streaming parser), sign-in and session handling, password reset pages, route guards, the login, sign-up and onboarding pages, form handling, dialogs and toasts, the Vault (select mode and bulk actions, tag picker, upload and link dialogs), flashcard review keyboard controls, the assistant (modes, citations, conversation list and pinning), the Ctrl+K menu, the offline banner and 404 page, the installable-app files and service worker rules, and the date, size and device-name helpers. The suite was also checked by deliberately breaking 16 pieces of real code and confirming the tests noticed (15 were caught; the other change could not be observed).
+- **`npm run check:ui`** registers a user, seeds content, then signs in once with Playwright (system **Edge** by default; set `UI_BROWSER=chrome` or a browser path) and visits 13 app pages and 3 signed-out pages in all 3 themes at 1440, 1024, 768 and 390 px. It reports horizontal overflow, console errors, failed requests and **axe-core WCAG 2.1 AA** serious and critical violations, and saves screenshots to `ui-report/`. It signs in once because sign-in is rate-limited, so restart the API before running it repeatedly.
 
 ## Deployment notes
 
@@ -322,5 +351,5 @@ docker compose up -d --build
 - The graph shows **400 items** at a time (pinned and recently opened first), with no clustering; similarity for suggestions is computed on demand.
 - Pages that need JavaScript to render may yield little text; sites that disallow bots are saved as bookmarks only.
 - Smart Search doesn't include chat messages; conversation search covers titles only; answers can't be edited or branched.
-- No email verification or password reset by email (it needs an email provider); registering with an existing email reveals that the account exists.
+- No email verification at sign-up, so registering with an existing email reveals that the account exists. Password reset by email has been tested against a local test mail server, not yet with a real email provider.
 - The UI check verifies layout, errors and automated accessibility rules; it doesn't replace manual testing with a screen reader or on real phones.

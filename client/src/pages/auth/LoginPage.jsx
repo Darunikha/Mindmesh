@@ -11,7 +11,7 @@ export default function LoginPage() {
   const { login, sessionNotice, clearSessionNotice } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const { bind, handleSubmit, submitting, formError } = useForm(
+  const { values, bind, handleSubmit, submitting, formError } = useForm(
     { email: '', password: '' },
     {
       validate: (v) => ({
@@ -40,7 +40,14 @@ export default function LoginPage() {
         {sessionNotice && <Alert tone="info">{sessionNotice}</Alert>}
         {formError && <Alert tone="error">{formError}</Alert>}
         <TextField label="Email" type="email" autoComplete="email" autoFocus placeholder="you@example.com" {...bind('email')} />
-        <TextField label="Password" type="password" autoComplete="current-password" {...bind('password')} />
+        <div>
+          <TextField label="Password" type="password" autoComplete="current-password" {...bind('password')} />
+          <p className="mt-2 text-right font-ui text-sm">
+            <Link to="/forgot-password" state={{ email: values.email }} className="font-semibold text-accent underline-offset-4 hover:underline">
+              Forgot password?
+            </Link>
+          </p>
+        </div>
         <Button type="submit" size="lg" className="w-full" loading={submitting} iconRight={ArrowRight}>
           Sign in
         </Button>

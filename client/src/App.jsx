@@ -7,6 +7,8 @@ import { PublicOnly, RequireAuth } from './components/layout/RouteGuards.jsx';
 import AppShell from './components/layout/AppShell.jsx';
 import LoginPage from './pages/auth/LoginPage.jsx';
 import RegisterPage from './pages/auth/RegisterPage.jsx';
+import ForgotPasswordPage from './pages/auth/ForgotPasswordPage.jsx';
+import ResetPasswordPage from './pages/auth/ResetPasswordPage.jsx';
 import OnboardingPage from './pages/OnboardingPage.jsx';
 import HomePage from './pages/HomePage.jsx';
 import SettingsPage from './pages/settings/SettingsPage.jsx';
@@ -48,7 +50,11 @@ export default function App() {
         <Route element={<PublicOnly />}>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         </Route>
+
+        {/* Outside the guards: an emailed link must open even in a browser that is signed in. */}
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
 
         <Route element={<RequireAuth allowIncompleteOnboarding />}>
           <Route path="/onboarding" element={<OnboardingGate />} />

@@ -10,6 +10,9 @@ const bool = z
   .default('false')
   .transform((v) => v === 'true');
 
+/** Treats a blank value (e.g. "SMTP_HOST=" in .env) as not set. */
+const optional = (type) => z.preprocess((v) => (typeof v === 'string' && !v.trim() ? undefined : v), type.optional());
+
 const schema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   PORT: z.coerce.number().int().positive().default(4000),
@@ -33,6 +36,18 @@ const schema = z.object({
     .transform((v) => v === 'true'),
   CLIENT_DIST: z.string().default('../client/dist'),
   API_RATE_LIMIT_PER_MIN: z.coerce.number().int().min(60).max(100000).default(1200),
+
+  // Email, used for password reset. Any SMTP service works.
+  SMTP_HOST: optional(z.string().trim()),
+  SMTP_PORT: optional(z.coerce.number().int().min(1).max(65535)),
+  /** TLS from the first byte (port 465). Otherwise the connection is upgraded with STARTTLS. */
+  SMTP_SECURE: optional(z.enum(['true', 'false'])),
+  SMTP_USER: optional(z.string()),
+  SMTP_PASS: optional(z.string()),
+  MAIL_FROM: optional(z.string().trim()),
+  /** Public address of the web app, used in emailed links. Defaults to the first CLIENT_ORIGIN. */
+  APP_URL: optional(z.url({ protocol: /^https?$/, error: 'must be a full address such as https://notes.example.com' })),
+  PASSWORD_RESET_TTL_MINUTES: z.coerce.number().int().min(5).max(1440).default(30),
 
   // Phase 2: knowledge library
   UPLOAD_DIR: z.string().default('./uploads'),
@@ -98,6 +113,11 @@ if (env.NODE_ENV === 'production' && env.USE_IN_MEMORY_DB) {
 
 if (env.NODE_ENV === 'production' && env.ALLOW_PRIVATE_LINK_FETCH) {
   console.error('\n[mindmesh] ALLOW_PRIVATE_LINK_FETCH cannot be enabled in production.\n');
+  process.exit(1);
+}
+
+if (env.SMTP_HOST && !env.MAIL_FROM && !env.SMTP_USER?.includes('@')) {
+  console.error('\n[mindmesh] Set MAIL_FROM to the address emails should come from.\n');
   process.exit(1);
 }
 

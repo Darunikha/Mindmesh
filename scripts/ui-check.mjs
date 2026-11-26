@@ -167,25 +167,42 @@ async function main() {
   }
   await context.close();
 
-  // The signed-out sign-in page in each theme (theme comes from the visitor's saved choice).
+  // The signed-out pages in each theme (theme comes from the visitor's saved choice).
+  const SIGNED_OUT = [
+    { name: 'login', path: '/login' },
+    { name: 'forgot-password', path: '/forgot-password' },
+    { name: 'reset-password', path: '/reset-password#token=example' },
+  ];
   for (const theme of THEMES) {
     for (const width of WIDTHS) {
+      for (const pg of SIGNED_OUT) {
       const visitor = await browser.newContext({ viewport: { width, height: HEIGHT[width] || 900 } });
       await visitor.addInitScript((t) => localStorage.setItem('mm.theme', t), theme);
       const p = await visitor.newPage();
-      await p.goto(`${BASE}/login`);
+      await p.goto(`${BASE}${pg.path}`);
       await p.waitForTimeout(500);
       const { overflow, offenders } = await p.evaluate(OVERFLOW_PROBE);
-      await p.screenshot({ path: path.join(OUT, `${theme}-login-${width}.png`) });
-      results.push({ theme, width, page: 'login', overflow, offenders, errors: [] });
+      await p.screenshot({ path: path.join(OUT, `${theme}-${pg.name}-${width}.png`) });
+      let a11y = [];
+      if (width === WIDTHS[0]) {
+        await p.waitForTimeout(700); // let the entrance animation finish before measuring contrast
+        await p.addScriptTag({ content: AXE_SOURCE }).catch(() => {});
+        a11y = await p.evaluate(async () => {
+          if (!window.axe) return [];
+          const r = await window.axe.run(document, { runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'] } });
+          return r.violations.filter((v) => v.impact === 'serious' || v.impact === 'critical').map((v) => `${v.id} (${v.impact}, ${v.nodes.length}×)`);
+        });
+      }
+      results.push({ theme, width, page: pg.name, overflow, offenders, errors: [], a11y });
       await visitor.close();
+      }
     }
   }
   await browser.close();
 
   const problems = results.filter((r) => r.overflow > 1 || r.errors.length || r.a11y?.length);
   await fs.writeFile(path.join(OUT, 'report.json'), JSON.stringify({ checked: results.length, problems }, null, 2));
-  console.log(`Checked ${results.length} page views (${THEMES.length} themes × ${WIDTHS.length} widths × ${PAGES(s).length + 1} pages).`);
+  console.log(`Checked ${results.length} page views (${THEMES.length} themes × ${WIDTHS.length} widths × ${PAGES(s).length + SIGNED_OUT.length} pages).`);
   if (!problems.length) console.log('No horizontal overflow, no console errors and no serious accessibility violations.');
   for (const p of problems) {
     console.log(`✖ ${p.theme} ${p.page} @${p.width}px${p.overflow > 1 ? ` overflow ${p.overflow}px ${p.offenders.join(' | ')}` : ''}${p.errors.length ? ` errors: ${p.errors.join(' | ')}` : ''}${p.a11y?.length ? ` a11y: ${p.a11y.join(' | ')}` : ''}`);

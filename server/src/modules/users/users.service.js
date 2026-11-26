@@ -8,6 +8,7 @@ import Conversation from '../../models/Conversation.js';
 import Message from '../../models/Message.js';
 import Connection from '../../models/Connection.js';
 import Session from '../../models/Session.js';
+import PasswordReset from '../../models/PasswordReset.js';
 import ApiError from '../../utils/ApiError.js';
 import { hashPassword, revokeAllSessions, verifyPassword } from '../auth/auth.service.js';
 import { deleteAllForUser } from '../library/library.service.js';
@@ -60,6 +61,8 @@ export async function changePassword(userId, sessionId, { currentPassword, newPa
   user.passwordHash = await hashPassword(newPassword);
   user.passwordChangedAt = new Date();
   await user.save();
+  // A reset link requested earlier must not be able to override the new password.
+  await PasswordReset.deleteMany({ user: userId });
   // Keep this device signed in; sign out everywhere else.
   const revoked = await revokeAllSessions(userId, { exceptSessionId: sessionId });
   return { user, revokedSessions: revoked };
@@ -96,6 +99,7 @@ export async function deleteAccount(userId, password) {
   await deleteAllForUser(userId);
   await deleteChatsForUser(userId);
   await Session.deleteMany({ user: userId });
+  await PasswordReset.deleteMany({ user: userId });
   await User.deleteOne({ _id: userId });
 }
 

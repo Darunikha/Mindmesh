@@ -18,6 +18,13 @@ export const registerSchema = z.object({
   theme: z.enum(THEMES).optional(),
 });
 
+export const forgotPasswordSchema = z.object({ email: emailSchema });
+
+export const resetPasswordSchema = z.object({
+  token: z.string().min(1).max(200),
+  password: passwordSchema,
+});
+
 export const loginSchema = z.object({
   email: emailSchema,
   password: z.string().min(1, 'Enter your password').max(128),

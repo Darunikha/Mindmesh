@@ -5,6 +5,8 @@ const STATIC_TITLES = {
   '/': 'Home',
   '/login': 'Sign in',
   '/register': 'Create account',
+  '/forgot-password': 'Forgot password',
+  '/reset-password': 'Choose a new password',
   '/onboarding': 'Welcome',
   '/vault': 'Knowledge Vault',
   '/collections': 'Collections & tags',

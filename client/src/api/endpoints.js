@@ -5,6 +5,8 @@ export const authApi = {
   login: (body) => http.post('/auth/login', body),
   logout: () => http.post('/auth/logout'),
   logoutAll: () => http.post('/auth/logout-all'),
+  forgotPassword: (body) => http.post('/auth/forgot-password', body),
+  resetPassword: (body) => http.post('/auth/reset-password', body),
 };
 
 export const usersApi = {

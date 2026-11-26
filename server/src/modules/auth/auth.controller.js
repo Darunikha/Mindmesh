@@ -1,5 +1,8 @@
 import env, { isProd } from '../../config/env.js';
+import ApiError from '../../utils/ApiError.js';
+import { inBackground, mailDelivery } from '../../mail/mailer.js';
 import * as authService from './auth.service.js';
+import * as passwordReset from './passwordReset.service.js';
 
 export const REFRESH_COOKIE = 'mm_rt';
 
@@ -24,6 +27,25 @@ export async function register(req, res) {
 
 export async function login(req, res) {
   sendSession(res, 200, await authService.login(req.body, meta(req)));
+}
+
+/**
+ * Answers the same way, and just as quickly, whether or not the account exists: the lookup and
+ * the email happen after the response, so neither the reply nor its timing reveals who has an account.
+ */
+export function forgotPassword(req, res) {
+  const delivery = mailDelivery();
+  if (delivery === 'none') {
+    throw new ApiError(503, 'Password reset by email isn’t set up on this server. Please contact whoever runs it.', 'EMAIL_NOT_CONFIGURED');
+  }
+  res.status(202).json({ delivery, expiresInMinutes: env.PASSWORD_RESET_TTL_MINUTES });
+  inBackground('password reset email', () => passwordReset.requestPasswordReset(req.body.email));
+}
+
+export async function resetPassword(req, res) {
+  await passwordReset.resetPassword(req.body);
+  res.clearCookie(REFRESH_COOKIE, { ...cookieOptions(), maxAge: undefined });
+  res.status(204).end();
 }
 
 export async function refresh(req, res) {
