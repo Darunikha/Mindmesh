@@ -350,7 +350,7 @@ docker compose up -d --build
 - Set `NODE_ENV=production`, serve over HTTPS (cookies become `Secure`, and browsers only install the app and run its service worker over HTTPS; `localhost` also counts), set `TRUST_PROXY=true` behind a proxy, and set `CLIENT_ORIGIN` to your site's address.
 - Persist `UPLOAD_DIR` on a volume, or replace the storage module with an object store.
 - Run one API instance, or move the in-process queues and vector cache to shared infrastructure first (see limitations).
-- **CI:** `.github/workflows/ci.yml` runs the API tests, the component tests and a production build on every push and pull request.
+- **CI:** `.github/workflows/ci.yml` runs lint, the API tests, the component tests and a production build on every push to `main` and on every pull request.
 
 ## Known limitations
 
