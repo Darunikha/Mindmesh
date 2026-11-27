@@ -80,7 +80,7 @@ Each theme has its own typography, surfaces, navigation and component shapes, no
 
 ## Quick start
 
-**Requirements:** Node.js 20.6 or later, and npm 10 or later. A MongoDB instance is optional for a first look.
+**Requirements:** Node.js 20.19 or later, and npm 10 or later. A MongoDB instance is optional for a first look.
 
 ```bash
 npm install                                  # installs both workspaces
@@ -100,7 +100,7 @@ Generate each secret with `node -e "console.log(require('crypto').randomBytes(48
 
 | Command (repo root) | Purpose |
 | --- | --- |
-| `npm run dev` | Runs the API (auto-restart) and the Vite dev server together |
+| `npm run dev` | Runs the API (restarts when code in `server/src` changes; restart it yourself after editing `server/.env`) and the Vite dev server together |
 | `npm test` | Runs the API tests, then the frontend component tests |
 | `npm run lint` | Checks the whole repo for mistakes such as undefined names, unused code and misused React hooks (ESLint) |
 | `npm start` | Production mode: builds the frontend, then serves it and the API from one server |

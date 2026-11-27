@@ -4,7 +4,7 @@ Thanks for taking a look. This guide covers setting up, how the code is organise
 
 ## Getting started
 
-You need Node.js 20.6 or later (developed on 24) and npm 10 or later.
+You need Node.js 20.19 or later (developed on 24) and npm 10 or later.
 
 ```bash
 npm install

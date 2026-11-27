@@ -5,7 +5,7 @@
   "type": "module",
   "main": "src/index.js",
   "scripts": {
-    "dev": "node --watch --env-file-if-exists=.env src/index.js",
+    "dev": "node scripts/dev.js",
     "start": "node --env-file-if-exists=.env src/index.js",
     "test": "node --test --test-concurrency=1 \"tests/**/*.test.js\"",
     "vector-index": "node --env-file-if-exists=.env scripts/create-vector-index.js",
