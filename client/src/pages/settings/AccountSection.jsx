@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Download, Trash2 } from 'lucide-react';
+import { Download, FileArchive, Trash2 } from 'lucide-react';
 import { fetchBlob } from '../../api/client.js';
 import Card, { CardHeader } from '../../components/ui/Card.jsx';
 import Button from '../../components/ui/Button.jsx';
@@ -31,7 +31,8 @@ export default function AccountSection() {
   const [errors, setErrors] = useState({});
   const [error, setError] = useState(null);
   const [deleting, setDeleting] = useState(false);
-  const [exporting, setExporting] = useState(false);
+  /** Which download is being prepared: 'json', 'zip' or null. */
+  const [exporting, setExporting] = useState(null);
 
   const close = () => {
     setOpen(false);
@@ -58,14 +59,14 @@ export default function AccountSection() {
     }
   };
 
-  const downloadExport = async () => {
-    setExporting(true);
+  const downloadExport = async (format) => {
+    setExporting(format);
     try {
-      const blob = await fetchBlob('/users/me/export');
+      const blob = await fetchBlob(format === 'zip' ? '/users/me/export?files=true' : '/users/me/export');
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `mindmesh-export-${new Date().toISOString().slice(0, 10)}.json`;
+      a.download = `mindmesh-export-${new Date().toISOString().slice(0, 10)}.${format}`;
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -74,7 +75,7 @@ export default function AccountSection() {
     } catch (err) {
       toast.error(err.message);
     } finally {
-      setExporting(false);
+      setExporting(null);
     }
   };
 
@@ -96,11 +97,16 @@ export default function AccountSection() {
       <Card className="p-5 sm:p-6">
         <CardHeader eyebrow="Your data" title="Download everything" />
         <p className="mt-2 max-w-xl font-ui text-sm text-ink-muted">
-          A single JSON file with your notes (including their text), extracted document text, link details, collections, tags, flashcards, connections and conversations. Uploaded files themselves are listed by name but not included, and passwords are never exported.
+          Your notes (including their text), extracted document text, link details, collections, tags, flashcards, connections and conversations, as one JSON file. Choose the ZIP to also get your uploaded files in their original form. Passwords are never exported.
         </p>
-        <Button variant="secondary" icon={Download} className="mt-4" loading={exporting} onClick={downloadExport}>
-          Download my data
-        </Button>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <Button variant="secondary" icon={FileArchive} loading={exporting === 'zip'} disabled={Boolean(exporting)} onClick={() => downloadExport('zip')}>
+            Download with files (.zip)
+          </Button>
+          <Button variant="ghost" icon={Download} loading={exporting === 'json'} disabled={Boolean(exporting)} onClick={() => downloadExport('json')}>
+            Data only (.json)
+          </Button>
+        </div>
       </Card>
 
       <Card className="border-danger/30 p-5 sm:p-6">

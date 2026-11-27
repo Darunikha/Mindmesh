@@ -1,4 +1,6 @@
+import { pipeline } from 'node:stream/promises';
 import * as usersService from './users.service.js';
+import { buildArchive } from './export.archive.js';
 import { REFRESH_COOKIE } from '../auth/auth.controller.js';
 
 export function getMe(req, res) {
@@ -35,6 +37,18 @@ export async function revokeSession(req, res) {
 }
 
 export async function exportMe(req, res) {
+  if (req.validatedQuery.files === 'true') {
+    const zip = await buildArchive(req.user._id);
+    res.set({ 'Content-Type': 'application/zip', 'Content-Disposition': 'attachment; filename="mindmesh-export.zip"', 'Cache-Control': 'no-store' });
+    try {
+      await pipeline(zip.outputStream, res);
+    } catch (err) {
+      // The headers are already sent, so cutting the connection is how the download reports failure.
+      if (err.code !== 'ERR_STREAM_PREMATURE_CLOSE') console.error(`[mindmesh] Export failed: ${err.message}`);
+      res.destroy();
+    }
+    return;
+  }
   const data = await usersService.exportData(req.user._id);
   res.set({ 'Content-Disposition': 'attachment; filename="mindmesh-export.json"', 'Cache-Control': 'no-store' });
   res.json(data);

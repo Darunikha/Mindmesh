@@ -65,6 +65,8 @@ export const deleteAccountSchema = z.object({
   confirm: z.literal('DELETE', { error: 'Type DELETE to confirm' }),
 });
 
+export const exportQuery = z.object({ files: z.enum(['true', 'false']).default('false') }).strict();
+
 export const sessionIdParams = z.object({
   id: z.string().refine((v) => mongoose.isValidObjectId(v), 'Invalid session id'),
 });
