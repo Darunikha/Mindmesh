@@ -254,7 +254,7 @@ export default function HomePage() {
             <CardHeader eyebrow="Quick actions" title="Get things moving" />
             <div className="mt-5 grid gap-3 sm:grid-cols-2">
               <QuickAction icon={FileText} label="New note" hint="Start writing with autosave" onClick={newNote} busy={creating} />
-              <QuickAction icon={Upload} label="Upload a document" hint="PDF, Word, text, Markdown…" to="/vault?upload=1" tone="accent-3" />
+              <QuickAction icon={Upload} label="Upload a document" hint="PDF, Word, images, text…" to="/vault?upload=1" tone="accent-3" />
               <QuickAction icon={Link2} label="Save a link" hint="Keep a web page and its text" to="/vault?link=1" tone="accent-2" />
               <QuickAction icon={MessageSquareText} label="Start a conversation" hint="General AI, My Knowledge or Both" to="/assistant" tone="accent-2" />
               <QuickAction

@@ -3,33 +3,53 @@ import path from 'node:path';
 import { createRequire } from 'node:module';
 import mammoth from 'mammoth';
 import * as cheerio from 'cheerio';
+import { createCanvas } from '@napi-rs/canvas';
+import { ExtractionError } from './extractionError.js';
+import { MAX_IMAGE_PIXELS, recognizeCanvas, recognizeImage } from './ocr.js';
 
 /**
- * Text extractors. Each returns { segments: [{ text, page?, heading? }], pageCount? }.
+ * Text extractors. Each returns { segments: [{ text, page?, heading? }], pageCount?, ocr? }.
  * Throwing an ExtractionError marks the resource as failed with a user-facing message.
  */
-export class ExtractionError extends Error {
-  constructor(message, code = 'EXTRACTION_FAILED') {
-    super(message);
-    this.code = code;
-  }
-}
+export { ExtractionError };
 
 const require = createRequire(import.meta.url);
 const PDFJS_DIR = path.dirname(require.resolve('pdfjs-dist/package.json'));
 // pdfjs requires forward slashes and a trailing "/" even on Windows.
-const STANDARD_FONTS = `${path.join(PDFJS_DIR, 'standard_fonts').replace(/\\/g, '/')}/`;
+const pdfjsFolder = (name) => `${path.join(PDFJS_DIR, name).replace(/\\/g, '/')}/`;
+const STANDARD_FONTS = pdfjsFolder('standard_fonts');
 let pdfjsPromise = null;
 const loadPdfjs = () => (pdfjsPromise ||= import('pdfjs-dist/legacy/build/pdf.mjs'));
 
 const stripBom = (s) => (s.charCodeAt(0) === 0xfeff ? s.slice(1) : s);
 
-export async function extractPdf(data) {
+/** A page with fewer visible characters than this is treated as possibly scanned. */
+const SCANNED_PAGE_CHARS = 20;
+/** Scans are rendered at 300 dpi, capped so unusually large pages stay manageable. */
+const OCR_SCALE = 300 / 72;
+const OCR_MAX_SIDE = 2600;
+
+const visibleLength = (s) => s.replace(/\s+/g, '').length;
+
+async function readScannedPage(page) {
+  const { width, height } = page.getViewport({ scale: 1 });
+  const viewport = page.getViewport({ scale: Math.min(OCR_SCALE, OCR_MAX_SIDE / Math.max(width, height)) });
+  const canvas = createCanvas(Math.max(1, Math.ceil(viewport.width)), Math.max(1, Math.ceil(viewport.height)));
+  await page.render({ canvas, viewport }).promise;
+  return recognizeCanvas(canvas);
+}
+
+/** `ocrPages` is how many pages without selectable text may be read with text recognition. */
+export async function extractPdf(data, { ocrPages = 0 } = {}) {
   const pdfjs = await loadPdfjs();
   let pdf;
   const task = pdfjs.getDocument({
       data: new Uint8Array(data),
       standardFontDataUrl: STANDARD_FONTS,
+      // Decoders for the image formats scanners commonly use (JBIG2, JPEG 2000) and colour profiles.
+      wasmUrl: pdfjsFolder('wasm'),
+      iccUrl: pdfjsFolder('iccs'),
+      maxImageSize: MAX_IMAGE_PIXELS,
       disableFontFace: true,
       isEvalSupported: false,
       useSystemFonts: false,
@@ -44,6 +64,8 @@ export async function extractPdf(data) {
   }
   try {
     const segments = [];
+    const ocr = { pages: 0, skipped: 0, failed: 0 };
+    let attempted = 0;
     for (let i = 1; i <= pdf.numPages; i++) {
       const page = await pdf.getPage(i);
       const content = await page.getTextContent();
@@ -53,10 +75,27 @@ export async function extractPdf(data) {
         text += item.str;
         text += item.hasEOL ? '\n' : item.str && !item.str.endsWith(' ') ? ' ' : '';
       }
+      if (ocrPages > 0 && visibleLength(text) < SCANNED_PAGE_CHARS) {
+        if (attempted >= ocrPages) ocr.skipped += 1;
+        else {
+          attempted += 1;
+          try {
+            const recognised = await readScannedPage(page);
+            if (visibleLength(recognised) > visibleLength(text)) {
+              text = recognised;
+              ocr.pages += 1;
+            }
+          } catch (err) {
+            // One unreadable page shouldn't lose the rest of the document.
+            console.error(`[mindmesh] Could not read scanned page ${i}: ${err.message}`);
+            ocr.failed += 1;
+          }
+        }
+      }
       segments.push({ text, page: i });
       page.cleanup();
     }
-    return { segments, pageCount: pdf.numPages };
+    return { segments, pageCount: pdf.numPages, ocr };
   } finally {
     await task.destroy();
   }
@@ -124,8 +163,15 @@ function rtfToText(rtf) {
     .trim();
 }
 
-export async function extractFromFile(filePath, extractor) {
-  if (extractor === 'pdf') return extractPdf(await fs.readFile(filePath));
+async function extractImage(data, { ocrPages }) {
+  if (ocrPages <= 0) throw new ExtractionError('Text recognition is switched off on this server, so images can’t be read.', 'OCR_DISABLED');
+  const text = await recognizeImage(data);
+  return { segments: [{ text }], ocr: { pages: text ? 1 : 0, skipped: 0, failed: 0 } };
+}
+
+export async function extractFromFile(filePath, extractor, { ocrPages = 0 } = {}) {
+  if (extractor === 'pdf') return extractPdf(await fs.readFile(filePath), { ocrPages });
+  if (extractor === 'image') return extractImage(await fs.readFile(filePath), { ocrPages });
   if (extractor === 'docx') return extractDocx(filePath);
 
   const raw = stripBom(await fs.readFile(filePath, 'utf8'));

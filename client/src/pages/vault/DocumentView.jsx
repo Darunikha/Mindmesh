@@ -32,26 +32,30 @@ function Tabs({ value, onChange, tabs }) {
   );
 }
 
-/** Document preview: the original PDF inline, plus the extracted, indexed text for every format. */
+const IMAGE_TYPES = { '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp' };
+
+/** Document preview: the original PDF or image inline, plus the extracted, indexed text for every format. */
 export default function DocumentView({ resource }) {
   const toast = useToast();
   const isPdf = resource.file.extension === '.pdf';
-  const [tab, setTab] = useState(isPdf ? 'preview' : 'text');
-  const [pdfUrl, setPdfUrl] = useState(null);
-  const [pdfError, setPdfError] = useState(null);
+  const imageType = IMAGE_TYPES[resource.file.extension];
+  const previewType = isPdf ? 'application/pdf' : imageType;
+  const [tab, setTab] = useState(previewType ? 'preview' : 'text');
+  const [previewUrl, setPreviewUrl] = useState(null);
+  const [previewError, setPreviewError] = useState(null);
   const [downloading, setDownloading] = useState(false);
 
   useEffect(() => {
-    if (!isPdf || tab !== 'preview' || pdfUrl) return undefined;
+    if (!previewType || tab !== 'preview' || previewUrl) return undefined;
     const controller = new AbortController();
     libraryApi
       .fileBlob(resource.id, { signal: controller.signal })
-      .then((blob) => setPdfUrl(URL.createObjectURL(new Blob([blob], { type: 'application/pdf' }))))
-      .catch((err) => err.name !== 'AbortError' && setPdfError(err.message));
+      .then((blob) => setPreviewUrl(URL.createObjectURL(new Blob([blob], { type: previewType }))))
+      .catch((err) => err.name !== 'AbortError' && setPreviewError(err.message));
     return () => controller.abort();
-  }, [isPdf, tab, pdfUrl, resource.id]);
+  }, [previewType, tab, previewUrl, resource.id]);
 
-  useEffect(() => () => pdfUrl && URL.revokeObjectURL(pdfUrl), [pdfUrl]);
+  useEffect(() => () => previewUrl && URL.revokeObjectURL(previewUrl), [previewUrl]);
 
   const download = async () => {
     setDownloading(true);
@@ -72,15 +76,15 @@ export default function DocumentView({ resource }) {
     }
   };
 
-  const tabs = [...(isPdf ? [{ value: 'preview', label: 'Preview' }] : []), { value: 'text', label: 'Extracted text' }];
+  const tabs = [...(previewType ? [{ value: 'preview', label: 'Preview' }] : []), { value: 'text', label: 'Extracted text' }];
 
   return (
     <Card className="overflow-hidden">
       <div className="flex items-center justify-between gap-2 pr-3">
         <Tabs value={tab} onChange={setTab} tabs={tabs} />
         <div className="flex gap-1">
-          {pdfUrl && (
-            <Button variant="ghost" size="sm" iconOnly icon={ExternalLink} aria-label="Open PDF in a new tab" title="Open in new tab" onClick={() => window.open(pdfUrl, '_blank', 'noopener')} />
+          {isPdf && previewUrl && (
+            <Button variant="ghost" size="sm" iconOnly icon={ExternalLink} aria-label="Open PDF in a new tab" title="Open in new tab" onClick={() => window.open(previewUrl, '_blank', 'noopener')} />
           )}
           <Button variant="ghost" size="sm" icon={Download} loading={downloading} onClick={download}>
             Download
@@ -89,12 +93,16 @@ export default function DocumentView({ resource }) {
       </div>
       <div className={tab === 'preview' ? '' : 'p-5 sm:p-8'}>
         {tab === 'preview' &&
-          (pdfError ? (
+          (previewError ? (
             <div className="p-6">
-              <Alert tone="error">{pdfError}</Alert>
+              <Alert tone="error">{previewError}</Alert>
             </div>
-          ) : pdfUrl ? (
-            <iframe title={`Preview of ${resource.title}`} src={pdfUrl} className="h-[75vh] w-full border-0 bg-sunken" />
+          ) : previewUrl && imageType ? (
+            <div className="flex justify-center bg-sunken p-4">
+              <img src={previewUrl} alt={`Uploaded image: ${resource.title}`} className="max-h-[75vh] max-w-full object-contain" />
+            </div>
+          ) : previewUrl ? (
+            <iframe title={`Preview of ${resource.title}`} src={previewUrl} className="h-[75vh] w-full border-0 bg-sunken" />
           ) : (
             <div className="p-6">
               <Skeleton className="h-[60vh]" />
@@ -105,6 +113,7 @@ export default function DocumentView({ resource }) {
             <div className="flex flex-col items-center gap-3 py-10 text-center">
               <FileText size={24} className="animate-pulse text-accent" aria-hidden />
               <p className="font-ui text-sm text-ink-muted">Extracting text…</p>
+              {previewType && <p className="font-ui text-xs text-ink-faint">Scanned pages and images can take a minute or two.</p>}
             </div>
           ) : resource.processing.status === 'failed' ? (
             <p className="font-ui text-sm text-ink-muted">No text available. See the processing panel for details.</p>

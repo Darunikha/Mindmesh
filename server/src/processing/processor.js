@@ -17,7 +17,7 @@ export const processingQueue = createQueue({ name: 'processing', concurrency: en
 export const enqueue = (id) => processingQueue.enqueue(id);
 
 /** Replaces a resource's chunks. If the resource was deleted meanwhile, cleans up instead. */
-export async function writeChunks(resource, segments) {
+export async function writeChunks(resource, segments, { notes = [] } = {}) {
   const all = chunkSegments(segments);
   // Bound the work (and embedding cost) a single enormous item can create.
   const chunks = all.slice(0, MAX_CHUNKS_PER_RESOURCE).map((c) => ({ ...c, textHash: hashText(c.text) }));
@@ -50,7 +50,12 @@ export async function writeChunks(resource, segments) {
   }
   await Resource.updateOne(
     { _id: resource._id },
-    { $set: { 'processing.note': capped ? `This item is very long; only the first ${MAX_CHUNKS_PER_RESOURCE.toLocaleString()} of ${all.length.toLocaleString()} passages were indexed.` : null } },
+    {
+      $set: {
+        'processing.note':
+          [...notes, ...(capped ? [`This item is very long; only the first ${MAX_CHUNKS_PER_RESOURCE.toLocaleString()} of ${all.length.toLocaleString()} passages were indexed.`] : [])].join(' ') || null,
+      },
+    },
     { timestamps: false }
   );
   await scheduleEmbedding(resource._id, { delay: resource.type === 'note' ? NOTE_EMBED_DELAY_MS : 0 });
@@ -79,6 +84,27 @@ export async function indexNote(resource) {
   );
 }
 
+const plural = (n, word) => `${n.toLocaleString()} ${word}${n === 1 ? '' : 's'}`;
+
+/** What the person should know about text that came from recognition. */
+function ocrNotes(ocr, isImage) {
+  if (!ocr) return [];
+  const notes = [];
+  if (ocr.pages) notes.push(`Text ${isImage ? 'in this image' : `on ${plural(ocr.pages, 'page')}`} was read with text recognition (OCR), so it may contain mistakes.`);
+  if (ocr.failed) notes.push(`Text recognition failed on ${plural(ocr.failed, 'page')}.`);
+  if (ocr.skipped) notes.push(`${plural(ocr.skipped, 'more page')} without selectable text ${ocr.skipped === 1 ? 'was' : 'were'} not read (the limit is ${env.OCR_MAX_PAGES} per file).`);
+  return notes;
+}
+
+function noTextMessage(resource) {
+  const extension = resource.type === 'document' ? resource.file.extension : null;
+  const isImage = FILE_TYPES[extension]?.extractor === 'image';
+  if (extension !== '.pdf' && !isImage) return 'No readable text was found in this item.';
+  if (env.OCR_MAX_PAGES === 0) return 'No readable text was found. This PDF may contain scanned images, and text recognition is switched off on this server.';
+  const what = isImage ? 'in this image' : 'in this PDF, including any scanned pages';
+  return `No readable text was found ${what}. Text recognition works best on clear, upright, printed English.`;
+}
+
 async function fail(id, err) {
   const known = err instanceof ExtractionError || err instanceof FetchError;
   if (!known) console.error(`[mindmesh] Unexpected processing error for ${id}:`, err);
@@ -100,20 +126,22 @@ async function fail(id, err) {
 export async function processResource(id) {
   const resource = await Resource.findOneAndUpdate(
     { _id: id, 'processing.status': { $in: ['pending', 'processing'] } },
-    { $set: { 'processing.status': 'processing', 'processing.startedAt': new Date(), 'processing.error': null, 'processing.code': null }, $inc: { 'processing.attempts': 1 } },
+    { $set: { 'processing.status': 'processing', 'processing.startedAt': new Date(), 'processing.error': null, 'processing.code': null, 'processing.note': null }, $inc: { 'processing.attempts': 1 } },
     { returnDocument: 'after', timestamps: false }
   );
   if (!resource) return; // deleted, or already handled
 
   try {
     let segments;
+    let notes = [];
     const updates = {};
 
     if (resource.type === 'document') {
       const spec = FILE_TYPES[resource.file.extension];
       if (!spec) throw new ExtractionError('This file type is not supported.', 'UNSUPPORTED');
-      const out = await extractFromFile(absolutePath(resource.file.storageKey), spec.extractor);
+      const out = await extractFromFile(absolutePath(resource.file.storageKey), spec.extractor, { ocrPages: env.OCR_MAX_PAGES });
       segments = out.segments;
+      notes = ocrNotes(out.ocr, spec.extractor === 'image');
       if (out.pageCount) updates['file.pageCount'] = out.pageCount;
     } else if (resource.type === 'link') {
       // Failures (unreachable, blocked, robots-disallowed) mark the link failed, but the bookmark itself is kept.
@@ -134,16 +162,9 @@ export async function processResource(id) {
       return indexNote(resource);
     }
 
-    const result = await writeChunks(resource, segments);
+    const result = await writeChunks(resource, segments, { notes });
     if (!result) return; // resource deleted mid-processing
-    if (result.chunkCount === 0) {
-      throw new ExtractionError(
-        resource.type === 'document' && resource.file.extension === '.pdf'
-          ? 'No readable text was found. This PDF may contain scanned images, which need OCR (not yet supported).'
-          : 'No readable text was found in this item.',
-        'NO_TEXT'
-      );
-    }
+    if (result.chunkCount === 0) throw new ExtractionError(noTextMessage(resource), 'NO_TEXT');
 
     await Resource.updateOne(
       { _id: id },

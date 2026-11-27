@@ -413,6 +413,10 @@ export async function bulk(userId, { ids, action, collectionId, tags }) {
 /** Safe response types: never serve user files as HTML from the API origin. */
 const SERVE_AS = {
   '.pdf': { type: 'application/pdf', inline: true },
+  '.png': { type: 'image/png', inline: true },
+  '.jpg': { type: 'image/jpeg', inline: true },
+  '.jpeg': { type: 'image/jpeg', inline: true },
+  '.webp': { type: 'image/webp', inline: true },
   '.docx': { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', inline: false },
 };
 

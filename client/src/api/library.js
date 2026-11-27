@@ -37,5 +37,5 @@ export const tagsApi = {
   remove: (id) => http.del(`/tags/${id}`),
 };
 
-export const SUPPORTED_UPLOADS = ['.pdf', '.docx', '.txt', '.md', '.markdown', '.csv', '.json', '.html', '.htm', '.rtf'];
+export const SUPPORTED_UPLOADS = ['.pdf', '.docx', '.png', '.jpg', '.jpeg', '.webp', '.txt', '.md', '.markdown', '.csv', '.json', '.html', '.htm', '.rtf'];
 export const MAX_UPLOAD_MB = 25;

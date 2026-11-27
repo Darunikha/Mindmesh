@@ -52,6 +52,8 @@ const schema = z.object({
   // Phase 2: knowledge library
   UPLOAD_DIR: z.string().default('./uploads'),
   MAX_UPLOAD_MB: z.coerce.number().positive().max(200).default(25),
+  /** Pages per file that may be read with text recognition (scans and images). 0 switches it off. */
+  OCR_MAX_PAGES: z.coerce.number().int().min(0).max(500).default(30),
   PROCESSING_CONCURRENCY: z.coerce.number().int().min(1).max(8).default(2),
   LINK_FETCH_TIMEOUT_MS: z.coerce.number().int().min(1000).max(60000).default(10000),
   LINK_MAX_BYTES: z.coerce.number().int().min(10000).default(3000000),

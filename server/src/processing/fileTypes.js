@@ -15,10 +15,20 @@ const isText = (head) => {
   }
 };
 
+const startsWith = (head, bytes) => head.subarray(0, bytes.length).equals(Buffer.from(bytes));
+const isPng = (head) => startsWith(head, [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+const isJpeg = (head) => startsWith(head, [0xff, 0xd8, 0xff]);
+const isWebp = (head) => head.toString('latin1', 0, 4) === 'RIFF' && head.toString('latin1', 8, 12) === 'WEBP';
+const image = (mime, check) => ({ label: 'Image', extractor: 'image', mimes: [mime, 'application/octet-stream'], check });
+
 const TEXT_MIMES = ['text/plain', 'application/octet-stream', ''];
 
 export const FILE_TYPES = {
   '.pdf': { label: 'PDF', extractor: 'pdf', mimes: ['application/pdf', 'application/x-pdf', 'application/octet-stream'], check: isPdf },
+  '.png': image('image/png', isPng),
+  '.jpg': image('image/jpeg', isJpeg),
+  '.jpeg': image('image/jpeg', isJpeg),
+  '.webp': image('image/webp', isWebp),
   '.docx': {
     label: 'Word document',
     extractor: 'docx',

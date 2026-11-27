@@ -98,7 +98,7 @@ export default function UploadDialog({ open, onClose, initialFiles, defaultColle
   };
 
   return (
-    <Dialog open={open} onClose={close} title="Upload documents" description={`PDF, Word (.docx), text, Markdown, CSV, JSON, HTML or RTF, up to ${MAX_UPLOAD_MB} MB each.`}>
+    <Dialog open={open} onClose={close} title="Upload documents" description={`PDF, Word (.docx), images (PNG, JPEG, WebP), text, Markdown, CSV, JSON, HTML or RTF, up to ${MAX_UPLOAD_MB} MB each.`}>
       <div
         onDragOver={(e) => {
           e.preventDefault();

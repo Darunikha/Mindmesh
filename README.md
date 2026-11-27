@@ -38,11 +38,12 @@ Each theme has its own typography, surfaces, navigation and component shapes, no
 8. [AI provider setup](#ai-provider-setup)
 9. [Vector search configuration](#vector-search-configuration)
 10. [File storage](#file-storage)
-11. [Architecture](#architecture)
-12. [Security](#security)
-13. [Testing and quality checks](#testing-and-quality-checks)
-14. [Deployment notes](#deployment-notes)
-15. [Known limitations](#known-limitations)
+11. [Text recognition](#text-recognition-ocr)
+12. [Architecture](#architecture)
+13. [Security](#security)
+14. [Testing and quality checks](#testing-and-quality-checks)
+15. [Deployment notes](#deployment-notes)
+16. [Known limitations](#known-limitations)
 
 ---
 
@@ -52,7 +53,7 @@ Each theme has its own typography, surfaces, navigation and component shapes, no
 | --- | --- |
 | **Accounts and themes** | Sign up, onboard (name, theme, interests, default AI mode), and choose between three complete visual identities: **The Library** (warm editorial), **The Studio** (bright modular) and **The Lab** (dark research instrument). Your theme is saved to your account. |
 | **Forgot password** | An emailed link, valid once and for 30 minutes, to choose a new password; every device is signed out and a confirmation email follows (needs [email setup](#email-setup)). |
-| **Knowledge Vault** | Rich-text notes with autosave and conflict detection; uploads of PDF, DOCX, TXT, MD, CSV, JSON, HTML and RTF, with background text extraction; saved web links (title, description, favicon, readable text); pinning; grid and list views; recent items; **bulk actions**: press Select, tick several items, then pin, unpin, move, tag or delete them together (deleting asks first). |
+| **Knowledge Vault** | Rich-text notes with autosave and conflict detection; uploads of PDF, DOCX, TXT, MD, CSV, JSON, HTML and RTF, plus PNG, JPEG and WebP images, with background text extraction; **scanned PDFs and images are read with text recognition** (see [Text recognition](#text-recognition-ocr)); saved web links (title, description, favicon, readable text); pinning; grid and list views; recent items; **bulk actions**: press Select, tick several items, then pin, unpin, move, tag or delete them together (deleting asks first). |
 | **Organisation** | Nested collections (3 levels) and tags. Deleting a collection or tag never deletes your items. |
 | **AI assistant** | Streaming chat in three modes, switchable mid-conversation and chosen as your default during onboarding or in Settings: **General AI** (the model's own knowledge), **My Knowledge** (answers from your saved sources with inline citations, and says so when they don't cover a question) and **Both** (uses your sources, with citations, when they are relevant, and general knowledge when they are not, kept in clearly labelled paragraphs; it simply answers normally if your library is empty). Conversation history with search, rename, delete and **pinning** (up to 20 pinned chats stay at the top), copy, regenerate, stop, follow-up suggestions, Markdown and highlighted code. |
 | **Quick jump** | Press **Ctrl+K** (or **Cmd+K**) anywhere, or use the Quick jump button, to open a small menu. Type to find a page, or one of your notes, documents, links, collections or topics, then use the arrow keys and Enter to go there. It always offers a full search for what you typed. |
@@ -131,6 +132,7 @@ All configuration lives in `server/.env`. It is validated at boot, and the serve
 | `APP_URL` / `PASSWORD_RESET_TTL_MINUTES` | first `CLIENT_ORIGIN` / `30` | Address used in emailed links, and how long a reset link lasts |
 | `UPLOAD_DIR` / `MAX_UPLOAD_MB` | `./uploads` / `25` | File storage folder and per-file limit |
 | `PROCESSING_CONCURRENCY` | `2` | Parallel extraction jobs |
+| `OCR_MAX_PAGES` | `30` | Pages per file that may be read with text recognition; `0` switches it off |
 | `LINK_FETCH_TIMEOUT_MS` / `LINK_MAX_BYTES` | `10000` / `3000000` | Limits for fetching saved links |
 | `ALLOW_PRIVATE_LINK_FETCH` | `false` | Dev/test only. Allows localhost and private IPs; refused in production. |
 | `AI_PROVIDER` / `ANTHROPIC_API_KEY` | `anthropic` / — | Chat provider and key |
@@ -212,6 +214,16 @@ To use Atlas, point `MONGODB_URI` at Atlas, configure an embedding provider, and
 - **Cleanup:** deleting an item or an account removes its files.
 - **Hosting:** for multi-server or serverless hosting, replace `server/src/processing/storage.js` with an object-store (S3/GCS) implementation. Its interface is small: move into storage, open a stream, remove.
 
+## Text recognition (OCR)
+
+Images (PNG, JPEG, WebP) and PDF pages without selectable text are read with [Tesseract](https://github.com/naptha/tesseract.js). It runs on your own server: the engine and its English language data are installed with `npm install`, so no key is needed, it costs nothing, and files are not sent anywhere.
+
+- It works best on **clear, upright, printed English**. Handwriting, other languages, low-quality scans, and pictures that are sideways without a camera orientation tag read poorly or not at all.
+- Recognised text can contain mistakes. The item says when OCR was used.
+- Each page takes a few seconds. Up to `OCR_MAX_PAGES` (30) pages per file are read, one at a time, and the item says if any were left out.
+- Images over 40 megapixels are refused. iPhone HEIC photos are not accepted; save them as JPEG first.
+- A scan uploaded before this feature existed can be read by opening it and choosing **Try again**.
+
 ## Architecture
 
 ```
@@ -230,7 +242,7 @@ mindmesh/
 │       ├── models/            User Session Resource Chunk Collection Tag Conversation Message Connection Activity SearchHistory GraphLayout Flashcard Quiz
 │       ├── middleware/        auth · validate · errorHandler · rateLimit
 │       ├── modules/           auth users library collections tags chat ai search graph timeline flashcards quiz (routes → service)
-│       ├── processing/        storage · fileTypes · extractors · chunker · linkFetcher · queue · processor · embedder
+│       ├── processing/        storage · fileTypes · extractors · ocr · chunker · linkFetcher · queue · processor · embedder
 │       └── ai/                providers (registry) · anthropic · embeddings · vectorSearch · vectorCache · retrieval · prompts
 ├── scripts/ui-check.mjs       Playwright + axe-core UI/accessibility check
 └── server/tests, client/src/**/*.test.jsx
@@ -239,7 +251,7 @@ mindmesh/
 **Data flow for an upload:**
 1. Multer enforces size and type limits, and the file signature is checked.
 2. The file gets a random storage key, and the item is marked `pending` (the client gets a 202).
-3. The background queue extracts text (per page for PDFs) and chunks it (~1,200 characters with overlap, page- and heading-aware).
+3. The background queue extracts text (per page for PDFs, using text recognition for scanned pages and images) and chunks it (~1,200 characters with overlap, page- and heading-aware).
 4. The chunks are stored, and the item is marked ready, or failed with a reason.
 5. The embedding queue embeds only passages whose text hash changed, so unchanged passages keep their vectors.
 
@@ -293,14 +305,14 @@ mindmesh/
 ## Testing and quality checks
 
 ```bash
-npm test                    # API tests (128) + frontend tests (419)
+npm test                    # API tests (142) + frontend tests (425)
 npm test -w server          # API only: node:test + supertest + in-memory MongoDB
 npm test -w client          # components only: Vitest + Testing Library (jsdom)
 npm run dev & npm run check:ui
 ```
 
-- **API tests** cover auth, sessions, password reset (including single use, expiry, simultaneous requests and delivery to a local test mail server), preferences, notes and autosave conflicts, uploads (generated PDF and DOCX files), extraction failures, links (a local test server, redirects, robots.txt, SSRF), collections and tags, search (keyword, semantic, filters, highlights), stale-data cleanup, the assistant (streaming, citations, isolation, locking, stop, errors, regenerate, memory), embeddings (reuse, re-index), graph and suggestions, timeline and backfill, and security hardening. AI providers are replaced by **test-only doubles** registered inside the tests, so no keys are needed and no real AI quality is implied.
-- **Frontend tests** (Vitest and Testing Library) cover the API client (request shape, error mapping, shared token refresh, downloads, uploads and the streaming parser), sign-in and session handling, password reset pages, route guards, the login, sign-up and onboarding pages, form handling, dialogs and toasts, the Vault (select mode and bulk actions, tag picker, upload and link dialogs), flashcard review keyboard controls, the assistant (modes, citations, conversation list and pinning), the Ctrl+K menu, the offline banner and 404 page, the installable-app files and service worker rules, and the date, size and device-name helpers. The suite was also checked by deliberately breaking 16 pieces of real code and confirming the tests noticed (15 were caught; the other change could not be observed).
+- **API tests** cover auth, sessions, password reset (including single use, expiry, simultaneous requests and delivery to a local test mail server), preferences, notes and autosave conflicts, uploads (generated PDF and DOCX files), text recognition on generated images and scanned PDFs, extraction failures, links (a local test server, redirects, robots.txt, SSRF), collections and tags, search (keyword, semantic, filters, highlights), stale-data cleanup, the assistant (streaming, citations, isolation, locking, stop, errors, regenerate, memory), embeddings (reuse, re-index), graph and suggestions, timeline and backfill, and security hardening. AI providers are replaced by **test-only doubles** registered inside the tests, so no keys are needed and no real AI quality is implied.
+- **Frontend tests** (Vitest and Testing Library) cover the API client (request shape, error mapping, shared token refresh, downloads, uploads and the streaming parser), sign-in and session handling, password reset pages, route guards, the login, sign-up and onboarding pages, form handling, dialogs and toasts, the Vault (select mode and bulk actions, tag picker, upload and link dialogs), document previews, flashcard review keyboard controls, the assistant (modes, citations, conversation list and pinning), the Ctrl+K menu, the offline banner and 404 page, the installable-app files and service worker rules, and the date, size and device-name helpers. The suite was also checked by deliberately breaking 16 pieces of real code and confirming the tests noticed (15 were caught; the other change could not be observed).
 - **`npm run check:ui`** registers a user, seeds content, then signs in once with Playwright (system **Edge** by default; set `UI_BROWSER=chrome` or a browser path) and visits 13 app pages and 3 signed-out pages in all 3 themes at 1440, 1024, 768 and 390 px. It reports horizontal overflow, console errors, failed requests and **axe-core WCAG 2.1 AA** serious and critical violations, and saves screenshots to `ui-report/`. It signs in once because sign-in is rate-limited, so restart the API before running it repeatedly.
 
 ## Deployment notes
@@ -346,7 +358,7 @@ docker compose up -d --build
 - **Single-instance design:** background jobs use an in-process queue (durable status, re-queued at boot), and in-process vector search uses an in-memory cache. Both need shared infrastructure (e.g. BullMQ/Redis, Atlas Vector Search) for multiple API instances.
 - **Offline use is limited to the app shell.** Without a connection the app opens and says it is offline, but notes, search and chat need the server; there is no offline editing or sync. Installability was verified with Chromium's own check and a real offline reload, but not on a physical phone or on Safari/iOS.
 - **Local disk** file storage; there's no object-store adapter yet.
-- **No OCR:** scanned PDFs are reported as having no text. Legacy `.doc`, PowerPoint, Excel and image files aren't accepted.
+- **Text recognition is English only** and meant for printed text; see [Text recognition](#text-recognition-ocr). It does not apply to PDFs saved as links. Legacy `.doc`, PowerPoint, Excel and HEIC files aren't accepted.
 - Very long items are indexed up to **3,000 passages**, and the item says so.
 - The graph shows **400 items** at a time (pinned and recently opened first), with no clustering; similarity for suggestions is computed on demand.
 - Pages that need JavaScript to render may yield little text; sites that disallow bots are saved as bookmarks only.
