@@ -62,7 +62,7 @@ export default function RelatedPanel({ resourceId }) {
           ))}
           {showSimilar && data.similar.map((s) => (
             <li key={s.id} className="flex items-center gap-2">
-              <TypeBadge type={s.type} withIcon={false} className="w-14 shrink-0" />
+              <TypeBadge type={s.type} withIcon={false} className="w-14 shrink-0 library:w-20" />
               <Link to={`/vault/${s.id}`} className="min-w-0 flex-1 truncate font-ui text-sm text-ink-muted hover:text-accent">
                 {s.title}
               </Link>

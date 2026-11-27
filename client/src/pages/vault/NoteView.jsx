@@ -150,7 +150,7 @@ export default function NoteView({ resource, onChange, autoFocusTitle, renderSta
                 document.querySelector('.ProseMirror')?.focus();
               }
             }}
-            className="w-full bg-transparent font-display text-3xl text-ink outline-none placeholder:text-ink-faint sm:text-4xl library:text-[2.6rem] library:italic"
+            className="w-full bg-transparent pb-1 font-display text-3xl leading-snug text-ink outline-none placeholder:text-ink-faint sm:text-4xl sm:leading-snug library:text-[2.6rem] library:italic"
           />
         </div>
         <RichTextEditor

@@ -77,7 +77,7 @@ function RecentList({ title, items, empty }) {
           {items.map((r) => (
             <li key={r.id}>
               <Link to={`/vault/${r.id}`} className="group flex items-center gap-2.5 rounded-control px-2 py-1.5 hover:bg-sunken">
-                <TypeBadge type={r.type} className="w-[4.5rem] shrink-0" />
+                <TypeBadge type={r.type} className="w-[4.5rem] shrink-0 library:w-20" />
                 <span className="min-w-0 flex-1 truncate font-ui text-sm text-ink group-hover:text-accent library:font-display library:text-base">{r.title}</span>
                 <span className="shrink-0 font-ui text-xs text-ink-faint">{relativeTime(r.lastAccessedAt || r.createdAt)}</span>
               </Link>
@@ -256,7 +256,7 @@ export default function HomePage() {
               <QuickAction icon={FileText} label="New note" hint="Start writing with autosave" onClick={newNote} busy={creating} />
               <QuickAction icon={Upload} label="Upload a document" hint="PDF, Word, text, Markdown…" to="/vault?upload=1" tone="accent-3" />
               <QuickAction icon={Link2} label="Save a link" hint="Keep a web page and its text" to="/vault?link=1" tone="accent-2" />
-              <QuickAction icon={MessageSquareText} label="Start a conversation" hint="General AI or My Knowledge" to="/assistant" tone="accent-2" />
+              <QuickAction icon={MessageSquareText} label="Start a conversation" hint="General AI, My Knowledge or Both" to="/assistant" tone="accent-2" />
               <QuickAction
                 icon={GraduationCap}
                 label="Review flashcards"

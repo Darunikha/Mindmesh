@@ -119,7 +119,7 @@ function NodePanel({ node, edges, nodesById, onClose, onConnect, onRemoveConnect
             <ul className="space-y-1">
               {items.map(({ edge, other }) => (
                 <li key={edge.id} className="flex items-center gap-2">
-                  <TypeBadge type={other.data.resourceType} withIcon={false} className="w-16 shrink-0" />
+                  <TypeBadge type={other.data.resourceType} withIcon={false} className="w-16 shrink-0 library:w-20" />
                   <Link to={`/vault/${other.data.resourceId}`} className="min-w-0 flex-1 truncate font-ui text-sm text-ink hover:text-accent">
                     {other.data.label}
                   </Link>
@@ -488,7 +488,7 @@ function GraphCanvas() {
               {matches.slice(0, 10).map((n) => (
                 <li key={n.id}>
                   <button type="button" onClick={() => goTo(n)} className="flex w-full items-center gap-2 rounded-control px-2 py-1.5 text-left font-ui text-sm text-ink-muted hover:bg-sunken hover:text-ink">
-                    {n.data.kind === 'resource' ? <TypeBadge type={n.data.resourceType} withIcon={false} className="w-14 shrink-0" /> : n.data.kind === 'topic' ? <Hash size={12} /> : <Folder size={12} />}
+                    {n.data.kind === 'resource' ? <TypeBadge type={n.data.resourceType} withIcon={false} className="w-14 shrink-0 library:w-20" /> : n.data.kind === 'topic' ? <Hash size={12} /> : <Folder size={12} />}
                     <span className="truncate">{n.data.label}</span>
                   </button>
                 </li>

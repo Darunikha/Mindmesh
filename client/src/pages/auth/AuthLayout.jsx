@@ -98,7 +98,7 @@ export default function AuthLayout({ children }) {
                 className={cn(
                   'mm-chip',
                   'studio:border-white/15 studio:bg-white/5 studio:text-[#d8d4e6] studio:hover:text-white',
-                  'studio:aria-checked:border-[#f4c95d] studio:aria-checked:text-[#f4c95d]',
+                  'studio:aria-checked:border-[#f4c95d] studio:aria-checked:bg-white/10 studio:aria-checked:text-[#f4c95d]',
                   'aria-checked:border-accent aria-checked:bg-accent-soft aria-checked:text-accent'
                 )}
               >
